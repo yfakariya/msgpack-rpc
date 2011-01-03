@@ -1,0 +1,27 @@
+Release 0.1 - 2011/1/
+
+  Implements MessagePack-RPC 0.2 specs.
+
+  FEATURES
+    [Client]
+    * Asynchrnous (event-based) call APIs based on Async Socket APIs 
+      (see http://msdn.microsoft.com/en-us/library/bb968780).
+
+    [Server]
+    * Event based service invocation (note that asynchrnous invocation such as 
+      ASP.NET asynchronous page is not supported yet. So long running operation
+      might cause thread pool depletion.)
+    * Ad-Hoc reflection based dispatch.
+    * Experimental expression-tree based IL based dispatch (cache management
+      is not matured yet.)
+
+    [Common]
+    * Pluggable filters in serialization/deserialization.
+    * Respect error message like :
+        https://gist.github.com/470667/d33136f74584381bdb58b6444abfcb4a8bbe8abc
+
+  [Server]
+    FEATURES
+      
+
+See project wiki for roadmap.
