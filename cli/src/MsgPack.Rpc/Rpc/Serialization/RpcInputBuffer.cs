@@ -27,6 +27,8 @@ using System.Diagnostics.Contracts;
 
 namespace MsgPack.Rpc.Serialization
 {
+	// FIXME: refactor
+
 	/// <summary>
 	///		Represents RPC input buffer.
 	/// </summary>
@@ -35,7 +37,13 @@ namespace MsgPack.Rpc.Serialization
 		// This class is responsible for lifecycle of 'hot' segments of PooledBuffer.
 
 		private readonly Func<ChunkBuffer, BufferFeeding> _feeding;
-		private ChunkBuffer _buffer;
+		private ChunkBuffer _chunks;
+
+		public IList<ArraySegment<byte>> Chunks
+		{
+			get { return this._chunks; }
+		}
+
 		private int _readingPositionInSegment;
 		private int _segmentIndex;
 		private int _position;
@@ -47,7 +55,7 @@ namespace MsgPack.Rpc.Serialization
 			Contract.Assert( length >= 0 );
 			Contract.Assert( feeding != null );
 
-			this._buffer = buffer;
+			this._chunks = buffer;
 			this._length = length;
 			this._feeding = feeding;
 			this._segmentIndex = 0;
@@ -57,7 +65,7 @@ namespace MsgPack.Rpc.Serialization
 
 		public void Dispose()
 		{
-			this._buffer.Dispose();
+			this._chunks.Dispose();
 		}
 
 		//public void Reset()
@@ -120,7 +128,7 @@ namespace MsgPack.Rpc.Serialization
 						throw new ObjectDisposedException( typeof( Iterator ).FullName );
 					}
 
-					return this._enclosing._buffer[ this._enclosing._segmentIndex ].Get( this._enclosing._readingPositionInSegment );
+					return this._enclosing.Chunks[ this._enclosing._segmentIndex ].Get( this._enclosing._readingPositionInSegment );
 				}
 			}
 
@@ -151,7 +159,7 @@ namespace MsgPack.Rpc.Serialization
 				this._enclosing._readingPositionInSegment++;
 				this._enclosing._position++;
 
-				if( this._enclosing._position == this._enclosing._length)
+				if( this._enclosing.Chunks.Count == 0 || this._enclosing._position == this._enclosing._length)
 				{
 					if ( !this.RequestMoreData() )
 					{
@@ -159,10 +167,10 @@ namespace MsgPack.Rpc.Serialization
 					}
 				}
 
-				var segment = this._enclosing._buffer[ this._enclosing._segmentIndex ];
+				var segment = this._enclosing.Chunks[ this._enclosing._segmentIndex ];
 				while( segment.Count == this._enclosing._readingPositionInSegment )
 				{
-					if ( this._enclosing._buffer.Count == this._enclosing._segmentIndex + 1 )
+					if ( this._enclosing.Chunks.Count == this._enclosing._segmentIndex + 1 )
 					{
 						if ( !this.RequestMoreData() )
 						{
@@ -170,7 +178,7 @@ namespace MsgPack.Rpc.Serialization
 						}
 
 						// Retry segment boundary checking.
-						segment = this._enclosing._buffer[ this._enclosing._segmentIndex ];
+						segment = this._enclosing.Chunks[ this._enclosing._segmentIndex ];
 						continue;
 					}
 					else
@@ -188,7 +196,7 @@ namespace MsgPack.Rpc.Serialization
 			private bool RequestMoreData()
 			{
 				// Reach to initial buffer length, so try to get more.
-				var feedingResult = this._enclosing._feeding( this._enclosing._buffer );
+				var feedingResult = this._enclosing._feeding( this._enclosing._chunks );
 				if ( feedingResult.Feeded == 0 )
 				{
 					// Extra data does not exist.
@@ -198,7 +206,7 @@ namespace MsgPack.Rpc.Serialization
 				if ( feedingResult.ReallocatedBuffer != null )
 				{
 					// Reallocation implementation swapped buffer instance.
-					this._enclosing._buffer = feedingResult.ReallocatedBuffer;
+					this._enclosing._chunks = feedingResult.ReallocatedBuffer;
 				}
 
 				// Add extra data length to _length.

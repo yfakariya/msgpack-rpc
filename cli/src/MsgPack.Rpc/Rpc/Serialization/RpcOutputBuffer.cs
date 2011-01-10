@@ -20,14 +20,13 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using MsgPack.Collections;
-using System.IO;
 using System.Diagnostics.Contracts;
+using System.IO;
+using MsgPack.Collections;
 
 namespace MsgPack.Rpc.Serialization
 {
+	// FIXME: refactor
 	/// <summary>
 	///		Represents RPC output buffer. This class is NOT thread safe.
 	/// </summary>
@@ -43,44 +42,42 @@ namespace MsgPack.Rpc.Serialization
 		// Responsible for allocation
 		// BufferPool usage is thread safe, but returning and writing is not thread safe.
 
-		private readonly List<ArraySegment<byte>> _chunks;
-		private readonly BufferPool _poolForCopy;
-		private ChunkBuffer _bufferToBeDisposed;
+		private readonly ChunkBuffer _chunks;
+		private IEnumerable<byte> _swapped;
 
-		internal List<ArraySegment<byte>> Chunks
+		internal IList<ArraySegment<byte>> Chunks
 		{
 			get { return this._chunks; }
 		}
 
-		internal RpcOutputBuffer( BufferPool poolForCopy )
+		internal RpcOutputBuffer()
 		{
-			Contract.Assert( poolForCopy != null );
-
-			this._poolForCopy = poolForCopy;
-
-			// type(1)+id(1)+method(1)+arg(avg.3)
-			this._chunks = new List<ArraySegment<byte>>( 6 );
+			this._chunks = ChunkBuffer.CreateDefault();
 		}
 
 		public void Dispose()
 		{
-			if ( this._bufferToBeDisposed != null )
+			if ( this._chunks != null )
 			{
-				this._bufferToBeDisposed.Dispose();
-				this._bufferToBeDisposed = null;
+				this._chunks.Dispose();
 			}
 		}
 
-		public Stream OpenStream( bool isZeroCopy )
+		public IEnumerable<byte> ReadBytes()
 		{
-			if ( isZeroCopy )
+			if ( this._swapped != null )
 			{
-				return new ZeroCopyingRpcOutputBufferStream( this._chunks, this._poolForCopy, buffer => this._bufferToBeDisposed = buffer );
+				return this._swapped;
 			}
 			else
 			{
-				return new CopyingRpcOutputBufferStream( this._chunks, this._poolForCopy, buffer => this._bufferToBeDisposed = buffer );
+				return this._chunks.ReadAll();
 			}
+		}
+
+		public Stream OpenStream()
+		{
+			return new ZeroCopyingRpcOutputBufferStream( this._chunks );
 		}
 
 		internal RpcOutputBufferSwapper CreateSwapper()
@@ -88,7 +85,7 @@ namespace MsgPack.Rpc.Serialization
 			return new RpcOutputBufferSwapper( this );
 		}
 
-		private abstract class RpcOutputBufferStream : Stream
+		private abstract class WriteOnlyStream : Stream
 		{
 			public sealed override bool CanRead
 			{
@@ -116,45 +113,14 @@ namespace MsgPack.Rpc.Serialization
 				set { throw new NotSupportedException(); }
 			}
 
-			private readonly List<ArraySegment<byte>> _chunks;
-
-			protected List<ArraySegment<byte>> Chunks
-			{
-				get { return _chunks; }
-			}
-
-			private readonly BufferPool _poolForCopy;
-
-			protected BufferPool PoolForCopy
-			{
-				get { return this._poolForCopy; }
-			}
-
-			private readonly Action<ChunkBuffer> _bufferRegistration;
-
 			private bool _isDisposed;
 
-			protected RpcOutputBufferStream( List<ArraySegment<byte>> chunks, BufferPool poolForCopy, Action<ChunkBuffer> bufferRegistration )
-			{
-				Contract.Assert( chunks != null );
-				Contract.Assert( poolForCopy != null );
-				Contract.Assert( bufferRegistration != null );
-
-				this._chunks = chunks;
-				this._poolForCopy = poolForCopy;
-				this._bufferRegistration = bufferRegistration;
-			}
+			protected WriteOnlyStream() { }
 
 			protected override void Dispose( bool disposing )
 			{
 				base.Dispose( disposing );
 				this._isDisposed = true;
-			}
-
-			protected void RegisterBuffer( ChunkBuffer pooledBuffer )
-			{
-				Contract.Assert( pooledBuffer != null );
-				this._bufferRegistration( pooledBuffer );
 			}
 
 			public sealed override void Write( byte[] buffer, int offset, int count )
@@ -164,7 +130,7 @@ namespace MsgPack.Rpc.Serialization
 					throw new ArgumentNullException( "buffer" );
 				}
 
-				if ( offset < 0 || offset >= buffer.Length )
+				if ( offset < 0 )
 				{
 					throw new ArgumentOutOfRangeException( "offset" );
 				}
@@ -212,127 +178,45 @@ namespace MsgPack.Rpc.Serialization
 			}
 		}
 
-		private sealed class CopyingRpcOutputBufferStream : RpcOutputBufferStream
+		private sealed class ZeroCopyingRpcOutputBufferStream : WriteOnlyStream
 		{
-			private ChunkBuffer _buffer;
-			private int _lastSegmentIndex = 0;
-			private int _positionInSegment = 0;
+			// Do not dispose it.
+			private readonly ChunkBuffer _chunks;
 
-			public CopyingRpcOutputBufferStream( List<ArraySegment<byte>> chunks, BufferPool poolForCopy, Action<ChunkBuffer> bufferRegistration )
-				: base( chunks, poolForCopy, bufferRegistration ) { }
-
-			protected sealed override void Dispose( bool disposing )
+			public ZeroCopyingRpcOutputBufferStream( ChunkBuffer chunks )
 			{
-				base.RegisterBuffer( this._buffer );
-				for ( int i = 0; i < this._lastSegmentIndex; i++ )
-				{
-					this.Chunks.Add( this._buffer[ i ] );
-				}
-
-				var lastSegment = this._buffer[ this._lastSegmentIndex ];
-				//this.Chunks.Add( new ArraySegment<byte>( lastSegment.Array, lastSegment.Offset, this._positionInSegment - lastSegment.Offset ) );
-				// bytes after position is preserved since it might be required following filters.
-				this.Chunks.Add( lastSegment.SubSegment( this._positionInSegment ) );
-
-				base.Dispose( disposing );
+				this._chunks = chunks;
 			}
-
+			
 			protected sealed override void WriteCore( byte[] buffer, int offset, int count )
 			{
-				int copied = 0;
-				while ( copied < count )
-				{
-					if ( this._buffer == null )
-					{
-						this._buffer = this.PoolForCopy.Borrow( count );
-						//this._positionInSegment = this._buffer[ 0 ].Offset;
-						this._positionInSegment = 0;
-					}
-					else
-					{
-						var lastSegment = this._buffer[ this._lastSegmentIndex ];
-						//if ( this._positionInSegment == lastSegment.Offset + lastSegment.Count )
-						if ( this._positionInSegment == lastSegment.Count )
-						{
-							this._buffer = this._buffer.Reallocate( count - copied );
-						}
-
-						// If buffer was expanded, index should not be increment.
-						lastSegment = this._buffer[ this._lastSegmentIndex ];
-						//if ( this._positionInSegment == lastSegment.Offset + lastSegment.Count )
-						if ( this._positionInSegment == lastSegment.Count )
-						{
-							// New segment is allocated instead of expansion.
-							this._lastSegmentIndex++;
-							this._positionInSegment = 0;
-						}
-					}
-
-					var targetSegment = this._buffer[ this._lastSegmentIndex ];
-					int remain = this._positionInSegment - targetSegment.Offset;
-					int copying = remain <= count ? remain : count;
-					targetSegment.CopyFrom( this._positionInSegment, buffer, offset, copying );
-					this._positionInSegment += copying;
-					copied += copying;
-				}
-			}
-		}
-
-		private sealed class ZeroCopyingRpcOutputBufferStream : RpcOutputBufferStream
-		{
-			public ZeroCopyingRpcOutputBufferStream( List<ArraySegment<byte>> chunks, BufferPool poolForCopy, Action<ChunkBuffer> bufferRegistration )
-				: base( chunks, poolForCopy, bufferRegistration ) { }
-
-			protected override void WriteCore( byte[] buffer, int offset, int count )
-			{
-				this.Chunks.Add( new ArraySegment<byte>( buffer, offset, count ) );
+				this._chunks.Feed( new ArraySegment<byte>( buffer, offset, count ) );
 			}
 		}
 
 		internal sealed class RpcOutputBufferSwapper : IDisposable
 		{
-			private readonly List<ArraySegment<byte>> _newChunks;
 			private readonly RpcOutputBuffer _enclosing;
-			private ChunkBuffer _swappedBuffer;
+			private IEnumerable<byte> _swapping;
 
 			public RpcOutputBufferSwapper( RpcOutputBuffer enclosing )
 			{
 				Contract.Assert( enclosing != null );
 				this._enclosing = enclosing;
-				this._newChunks = new List<ArraySegment<byte>>( 1 );
 			}
 
 			public void Dispose()
 			{
-				if ( this._newChunks.Count > 0 )
+				if ( this._swapping != null )
 				{
-					this._enclosing._chunks.Clear();
-					this._enclosing._chunks.AddRange( this._newChunks );
-				}
-
-				if ( this._swappedBuffer != null )
-				{
-					if ( this._enclosing._bufferToBeDisposed != this._swappedBuffer
-						&& this._enclosing._bufferToBeDisposed != null )
-					{
-						// Return old buffer.
-						this._enclosing._bufferToBeDisposed.Dispose();
-					}
-
-					// Register new buffer as disposal of enclosing out buffer.
-					this._enclosing._bufferToBeDisposed = this._swappedBuffer;
+					this._enclosing._swapped = this._swapping;
+					this._swapping = null;
 				}
 			}
 
 			public IEnumerable<byte> ReadBytes()
 			{
-				foreach ( var segment in this._enclosing._chunks )
-				{
-					for ( int i = 0; i < segment.Count; i++ )
-					{
-						yield return segment.Get( i );
-					}
-				}
+				return this._enclosing.ReadBytes();
 			}
 
 			public void WriteBytes( IEnumerable<byte> sequence )
@@ -344,39 +228,7 @@ namespace MsgPack.Rpc.Serialization
 
 				Contract.EndContractBlock();
 
-				int segmentSize = this._enclosing._chunks.Sum( item => item.Count );
-				this._swappedBuffer = this._enclosing._poolForCopy.Borrow( segmentSize );
-
-				int processed = 0;
-				int segmentIndex = 0;
-				int positionInSegment = 0;
-				var segment = this._swappedBuffer[ segmentIndex ];
-				foreach ( var b in sequence )
-				{
-					if ( positionInSegment == segment.Count )
-					{
-						if ( segmentIndex == this._swappedBuffer.Count - 1 )
-						{
-							this._swappedBuffer = this._swappedBuffer.Reallocate( segmentSize - processed );
-						}
-
-						if ( segment.Count == positionInSegment )
-						{
-							segmentIndex++;
-							Contract.Assert( this._swappedBuffer.Count > segmentIndex );
-							this._newChunks.Add( segment );
-							segment = this._swappedBuffer[ segmentIndex ];
-							positionInSegment = 0;
-						}
-
-					}
-
-					segment.Set( positionInSegment, b );
-					processed++;
-					positionInSegment++;
-				}
-
-				this._newChunks.Add( segment );
+				this._swapping = sequence;
 			}
 		}
 	}

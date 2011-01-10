@@ -36,28 +36,19 @@ namespace MsgPack.Rpc.Serialization
 		public void TestSerialize_Request()
 		{
 			// TODO: Mock filters
-			var target =
-				new RequestMessageSerializer(
-					Constants.EmptyRequestMessageSerializationFilterProviders,
-					Constants.EmptySerializedMessageFilterProviders,
-					Constants.EmptyDeserializedMessageFilterProviders,
-					Constants.EmptyRequestMessageDeserializationFilterProviders,
-					null
-				);
+			var target = new RequestMessageSerializer( null, null, null, null, null );
 
-			var bufferPool = new AdHocPseudoBufferPool();
-			var type = MessageType.Request;
 			var id = Environment.TickCount;
 			var method = Guid.NewGuid().ToString();
 			var args = new object[] { 1, "String", null, true };
-			var buffer = new RpcOutputBuffer( bufferPool );
-			Assert.IsTrue( target.Serialize( type, id, method, args, buffer ).IsSuccess );
-			byte[] serialized = buffer.Chunks.ReadAll().ToArray();
+			var buffer = new RpcOutputBuffer();
+			Assert.IsTrue( target.Serialize( id, method, args, buffer ).IsSuccess );
+			byte[] serialized = buffer.ReadBytes().ToArray();
 			var mpo =
 				new MessagePackObject(
 					new MessagePackObject[]
 					{
-						new MessagePackObject( ( int )type ),
+						new MessagePackObject( ( int )MessageType.Request ),
 						new MessagePackObject( ( uint )id ),
 						new MessagePackObject( method ),
 						new MessagePackObject[]
@@ -78,27 +69,18 @@ namespace MsgPack.Rpc.Serialization
 		public void TestSerialize_Notify()
 		{
 			// TODO: Mock filters
-			var target =
-				new RequestMessageSerializer(
-					Constants.EmptyRequestMessageSerializationFilterProviders,
-					Constants.EmptySerializedMessageFilterProviders,
-					Constants.EmptyDeserializedMessageFilterProviders,
-					Constants.EmptyRequestMessageDeserializationFilterProviders,
-					null
-				);
+			var target = new RequestMessageSerializer( null, null, null, null, null );
 
-			var bufferPool = new AdHocPseudoBufferPool();
-			var type = MessageType.Notification;
 			var method = Guid.NewGuid().ToString();
 			var args = new object[] { 1, "String", null, true };
-			var buffer = new RpcOutputBuffer( bufferPool );
-			Assert.IsTrue( target.Serialize( type, null, method, args, buffer ).IsSuccess );
-			byte[] serialized = buffer.Chunks.ReadAll().ToArray();
+			var buffer = new RpcOutputBuffer();
+			Assert.IsTrue( target.Serialize( null, method, args, buffer ).IsSuccess );
+			byte[] serialized = buffer.ReadBytes().ToArray();
 			var mpo =
 				new MessagePackObject(
 					new MessagePackObject[]
 					{
-						new MessagePackObject( ( int )type ),
+						new MessagePackObject( ( int )MessageType.Notification ),
 						new MessagePackObject( method ),
 						new MessagePackObject[]
 						{
@@ -118,17 +100,8 @@ namespace MsgPack.Rpc.Serialization
 		public void TestDeerialize_Request_Normal()
 		{
 			// TODO: Mock filters
-			var target =
-				new RequestMessageSerializer(
-					Constants.EmptyRequestMessageSerializationFilterProviders,
-					Constants.EmptySerializedMessageFilterProviders,
-					Constants.EmptyDeserializedMessageFilterProviders,
-					Constants.EmptyRequestMessageDeserializationFilterProviders,
-					null
-				);
+			var target = new RequestMessageSerializer( null, null, null, null, null );
 
-			var bufferPool = new AdHocPseudoBufferPool();
-			var type = MessageType.Request;
 			var id = Environment.TickCount;
 			var method = Guid.NewGuid().ToString();
 			var args = new object[] { 1, "String", null, true };
@@ -136,7 +109,7 @@ namespace MsgPack.Rpc.Serialization
 				new MessagePackObject(
 					new MessagePackObject[]
 					{
-						new MessagePackObject( ( int )type ),
+						new MessagePackObject( ( int )MessageType.Request ),
 						new MessagePackObject( ( uint )id ),
 						new MessagePackObject( method ),
 						new MessagePackObject[]
@@ -151,9 +124,9 @@ namespace MsgPack.Rpc.Serialization
 			var stream = new MemoryStream();
 			Packer.Create( stream ).Pack( expected );
 			var serialized = stream.ToArray();
-			using ( var underlying = bufferPool.Borrow( serialized.Length ) )
+			using ( var underlying = ChunkBuffer.CreateDefault() )
 			{
-				underlying.Fill( serialized );
+				underlying.Feed( new ArraySegment<byte>( serialized ) );
 				using ( var buffer = new RpcInputBuffer( underlying, serialized.Length, FeedingNotRequired ) )
 				{
 					RequestMessage actual;
@@ -174,24 +147,15 @@ namespace MsgPack.Rpc.Serialization
 		public void TestDeerialize_Notification_Normal()
 		{
 			// TODO: Mock filters
-			var target =
-				new RequestMessageSerializer(
-					Constants.EmptyRequestMessageSerializationFilterProviders,
-					Constants.EmptySerializedMessageFilterProviders,
-					Constants.EmptyDeserializedMessageFilterProviders,
-					Constants.EmptyRequestMessageDeserializationFilterProviders,
-					null
-				);
+			var target = new RequestMessageSerializer( null, null, null, null, null );
 
-			var bufferPool = new AdHocPseudoBufferPool();
-			var type = MessageType.Notification;
 			var method = Guid.NewGuid().ToString();
 			var args = new object[] { 1, "String", null, true };
 			var expected =
 				new MessagePackObject(
 					new MessagePackObject[]
 					{
-						new MessagePackObject( ( int )type ),
+						new MessagePackObject( ( int )MessageType.Notification ),
 						new MessagePackObject( method ),
 						new MessagePackObject[]
 						{
@@ -205,9 +169,9 @@ namespace MsgPack.Rpc.Serialization
 			var stream = new MemoryStream();
 			Packer.Create( stream ).Pack( expected );
 			var serialized = stream.ToArray();
-			using ( var underlying = bufferPool.Borrow( serialized.Length ) )
+			using ( var underlying = ChunkBuffer.CreateDefault() )
 			{
-				underlying.Fill( serialized );
+				underlying.Feed( new ArraySegment<byte>( serialized ) );
 				using ( var buffer = new RpcInputBuffer( underlying, serialized.Length, FeedingNotRequired ) )
 				{
 					RequestMessage actual;
@@ -227,17 +191,8 @@ namespace MsgPack.Rpc.Serialization
 		public void TestDeserialize_Request_Devided()
 		{
 			// TODO: Mock filters
-			var target =
-				new RequestMessageSerializer(
-					Constants.EmptyRequestMessageSerializationFilterProviders,
-					Constants.EmptySerializedMessageFilterProviders,
-					Constants.EmptyDeserializedMessageFilterProviders,
-					Constants.EmptyRequestMessageDeserializationFilterProviders,
-					null
-				);
-
-			var bufferPool = new AdHocPseudoBufferPool();
-			var type = MessageType.Request;
+			var target = new RequestMessageSerializer( null, null, null, null, null );
+			;
 			var id = Environment.TickCount;
 			var method = Guid.NewGuid().ToString();
 			var args = new object[] { 1, "String", null, true };
@@ -245,7 +200,7 @@ namespace MsgPack.Rpc.Serialization
 				new MessagePackObject(
 					new MessagePackObject[]
 					{
-						new MessagePackObject( ( int )type ),
+						new MessagePackObject( ( int )MessageType.Request ),
 						new MessagePackObject( ( uint )id ),
 						new MessagePackObject( method ),
 						new MessagePackObject[]
@@ -262,9 +217,9 @@ namespace MsgPack.Rpc.Serialization
 			var serialized = stream.ToArray();
 			var packets = Segmentate( serialized, 10 ).ToArray();
 			int indexOfPackets = 0;
-			using ( var underlying = bufferPool.Borrow( 10 ) )
+			using ( var underlying = ChunkBuffer.CreateDefault() )
 			{
-				Assert.AreEqual( 10L, underlying.Fill( packets[ 0 ] ) );
+				underlying.Feed( new ArraySegment<byte>( packets[ 0 ] ) );
 				using ( var buffer =
 					new RpcInputBuffer(
 						underlying,
@@ -278,9 +233,8 @@ namespace MsgPack.Rpc.Serialization
 								//Assert.Fail( "Over requesting." );
 							}
 
-							var reallocated = item.Reallocate( 10 );
-							
-							return new BufferFeeding( ( int )reallocated.Fill( packets[ indexOfPackets ], 10 * indexOfPackets ), reallocated );
+							item.Feed( new ArraySegment<byte>( packets[ indexOfPackets ] ) );
+							return new BufferFeeding( packets[ indexOfPackets ].Length );
 						}
 					) )
 				{
@@ -302,24 +256,15 @@ namespace MsgPack.Rpc.Serialization
 		public void TestDeserialize_Notification_Devided()
 		{
 			// TODO: Mock filters
-			var target =
-				new RequestMessageSerializer(
-					Constants.EmptyRequestMessageSerializationFilterProviders,
-					Constants.EmptySerializedMessageFilterProviders,
-					Constants.EmptyDeserializedMessageFilterProviders,
-					Constants.EmptyRequestMessageDeserializationFilterProviders,
-					null
-				);
+			var target = new RequestMessageSerializer( null, null, null, null, null );
 
-			var bufferPool = new AdHocPseudoBufferPool();
-			var type = MessageType.Notification;
 			var method = Guid.NewGuid().ToString();
 			var args = new object[] { 1, "String", null, true };
 			var expected =
 				new MessagePackObject(
 					new MessagePackObject[]
 					{
-						new MessagePackObject( ( int )type ),
+						new MessagePackObject( ( int )MessageType.Notification ),
 						new MessagePackObject( method ),
 						new MessagePackObject[]
 						{
@@ -335,9 +280,9 @@ namespace MsgPack.Rpc.Serialization
 			var serialized = stream.ToArray();
 			var packets = Segmentate( serialized, 10 ).ToArray();
 			int indexOfPackets = 0;
-			using ( var underlying = bufferPool.Borrow( 10 ) )
+			using ( var underlying = ChunkBuffer.CreateDefault() )
 			{
-				Assert.AreEqual( 10L, underlying.Fill( packets[ 0 ] ) );
+				underlying.Feed( new ArraySegment<byte>( packets[ 0 ] ) );
 				using ( var buffer =
 					new RpcInputBuffer(
 						underlying,
@@ -348,11 +293,10 @@ namespace MsgPack.Rpc.Serialization
 							if ( indexOfPackets >= packets.Length )
 							{
 								Assert.Fail( "Over requesting." );
-							}
+							};
 
-							var reallocated = item.Reallocate( 10 );
-
-							return new BufferFeeding( ( int )reallocated.Fill( packets[ indexOfPackets ], 10 * indexOfPackets ), reallocated );
+							item.Feed( new ArraySegment<byte>( packets[ indexOfPackets ] ) );
+							return new BufferFeeding( packets[ indexOfPackets ].Length );
 						}
 					) )
 				{
@@ -381,7 +325,7 @@ namespace MsgPack.Rpc.Serialization
 			{
 				List<byte> buffer = new List<byte>( length );
 				while ( true )
-				{					
+				{
 					for ( int i = 0; i < length; i++ )
 					{
 						if ( !iterator.MoveNext() )

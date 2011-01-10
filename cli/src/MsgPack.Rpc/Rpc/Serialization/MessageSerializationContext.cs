@@ -28,6 +28,7 @@ using System.Globalization;
 
 namespace MsgPack.Rpc.Serialization
 {
+	// TODO: cleanup
 	public abstract class MessageSerializationContext : SerializationErrorSink
 	{
 		private RpcOutputBuffer _buffer;

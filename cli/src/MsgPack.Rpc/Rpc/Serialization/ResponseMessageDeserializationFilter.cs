@@ -20,7 +20,6 @@
 
 using System;
 using System.Diagnostics.Contracts;
-using System.Collections.Generic;
 
 namespace MsgPack.Rpc.Serialization
 {
@@ -29,13 +28,21 @@ namespace MsgPack.Rpc.Serialization
 	/// </summary>
 	public abstract class ResponseMessageDeserializationFilter
 	{
-		internal void Process(ResponseMessageDeserializationContext context )
+		/// <summary>
+		///		Process response message after deserialization.
+		/// </summary>
+		/// <param name="context">Context information of deserializing message.</param>
+		internal void Process( ResponseMessageDeserializationContext context )
 		{
 			Contract.Assert( context != null );
 
 			this.ProcessCore( context );
 		}
 
+		/// <summary>
+		///		Process response message after deserialization.
+		/// </summary>
+		/// <param name="context">Context information of deserializing message.</param>
 		protected abstract void ProcessCore( ResponseMessageDeserializationContext context );
 	}
 }

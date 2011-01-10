@@ -29,16 +29,29 @@ namespace MsgPack.Rpc.Serialization
 	{
 		private RpcErrorMessage _serializationError;
 
+		/// <summary>
+		///		Get serialization error information.
+		/// </summary>
+		/// <value>
+		///		Serialization error information.
+		/// </value>
 		public RpcErrorMessage SerializationError
 		{
 			get { return this._serializationError; }
 		}
 
-		public void SetSerializationError( RpcErrorMessage error )
+		/// <summary>
+		///		Set <see cref="SerializationError"/>.
+		/// </summary>
+		/// <param name="error">Error to be set.</param>
+		internal void SetSerializationError( RpcErrorMessage error )
 		{
 			this._serializationError = error;
 		}
 
+		/// <summary>
+		///		Initialize new instance.
+		/// </summary>
 		protected SerializationErrorSink() { }
 	}
 }

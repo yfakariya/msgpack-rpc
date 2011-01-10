@@ -29,34 +29,44 @@ using MsgPack.Collections;
 
 namespace MsgPack.Rpc.Serialization
 {
+	// FIXME: test
 	/// <summary>
 	///		Serialize outgoing response message and deserialize incoming response message.
 	/// </summary>
 	public sealed class ResponseMessageSerializer
 	{
-		private readonly List<IFilterProvider<ResponseMessageSerializationFilter>> _preSerializationFilters;
-		private readonly List<IFilterProvider<SerializedMessageFilter<MessageSerializationContext>>> _postSerializationFilters;
-		private readonly List<IFilterProvider<SerializedMessageFilter<MessageDeserializationContext>>> _preDeserializationFilters;
-		private readonly List<IFilterProvider<ResponseMessageDeserializationFilter>> _postDeserializationFilters;
+		private readonly IList<IFilterProvider<ResponseMessageSerializationFilter>> _preSerializationFilters;
+		private readonly IList<IFilterProvider<SerializedMessageFilter<MessageSerializationContext>>> _postSerializationFilters;
+		private readonly IList<IFilterProvider<SerializedMessageFilter<MessageDeserializationContext>>> _preDeserializationFilters;
+		private readonly IList<IFilterProvider<ResponseMessageDeserializationFilter>> _postDeserializationFilters;
 		private readonly int? _maxRequestLength;
 
 		public ResponseMessageSerializer(
-			List<IFilterProvider<ResponseMessageSerializationFilter>> preSerializationFilters,
-			List<IFilterProvider<SerializedMessageFilter<MessageSerializationContext>>> postSerializationFilters,
-			List<IFilterProvider<SerializedMessageFilter<MessageDeserializationContext>>> preDeserializationFilters,
-			List<IFilterProvider<ResponseMessageDeserializationFilter>> postDeserializationFilters,
+			IList<IFilterProvider<ResponseMessageSerializationFilter>> preSerializationFilters,
+			IList<IFilterProvider<SerializedMessageFilter<MessageSerializationContext>>> postSerializationFilters,
+			IList<IFilterProvider<SerializedMessageFilter<MessageDeserializationContext>>> preDeserializationFilters,
+			IList<IFilterProvider<ResponseMessageDeserializationFilter>> postDeserializationFilters,
 			int? maxRequestLength
 			)
 		{
 			Contract.Assert( maxRequestLength.GetValueOrDefault() >= 0 );
 
-			this._preSerializationFilters = preSerializationFilters ?? Constants.EmptyResponseMessageSerializationFilterProviders;
-			this._postSerializationFilters = postSerializationFilters ?? Constants.EmptySerializedMessageFilterProviders;
-			this._preDeserializationFilters = preDeserializationFilters ?? Constants.EmptyDeserializedMessageFilterProviders;
-			this._postDeserializationFilters = postDeserializationFilters ?? Constants.EmptyResponseMessageDeserializationFilterProviders;
+			this._preSerializationFilters = preSerializationFilters ?? Arrays<IFilterProvider<ResponseMessageSerializationFilter>>.Empty;
+			this._postSerializationFilters = postSerializationFilters ?? Arrays<IFilterProvider<SerializedMessageFilter<MessageSerializationContext>>>.Empty;
+			this._preDeserializationFilters = preDeserializationFilters ?? Arrays<IFilterProvider<SerializedMessageFilter<MessageDeserializationContext>>>.Empty;
+			this._postDeserializationFilters = postDeserializationFilters ?? Arrays<IFilterProvider<ResponseMessageDeserializationFilter>>.Empty;
 			this._maxRequestLength = maxRequestLength;
 		}
 
+		/// <summary>
+		///		Serialize response message to specified buffer.
+		/// </summary>
+		/// <param name="messageId">ID of message.</param>
+		/// <param name="returnValue">Return value of the method.</param>
+		/// <param name="isVoid">If the method is void, then true.</param>
+		/// <param name="exception">Exception thrown from the method.</param>
+		/// <param name="buffer">Buffer to be stored serialized response stream.</param>
+		/// <returns>Error information.</returns>
 		public RpcErrorMessage Serialize( int messageId, object returnValue, bool isVoid, RpcException exception, RpcOutputBuffer buffer )
 		{
 			var context =
@@ -94,9 +104,9 @@ namespace MsgPack.Rpc.Serialization
 			return RpcErrorMessage.Success;
 		}
 
-		private void SerializeCore( MessageType messageType, int messageId, ResponseMessageSerializationContext context )
+		private static void SerializeCore( MessageType messageType, int messageId, ResponseMessageSerializationContext context )
 		{
-			using ( var stream = context.Buffer.OpenStream( true ) )
+			using ( var stream = context.Buffer.OpenStream() )
 			using ( var packer = Packer.Create( stream ) )
 			{
 				packer.PackArrayHeader( 4 );
@@ -110,30 +120,43 @@ namespace MsgPack.Rpc.Serialization
 				else
 				{
 					packer.PackString( context.Exception.RpcError.Identifier );
-					packer.PackMapHeader( context.Exception.DebugInformation == null ? 2 : 3 );
-					packer.PackString( "ErrorCode" );
-					packer.Pack( context.Exception.RpcError.ErrorCode );
-					packer.PackString( "Description" );
-					packer.PackString( context.Exception.Message );
-					if ( context.Exception.DebugInformation != null )
-					{
-						packer.PackString( "DebugInformation" );
-						packer.PackString( context.Exception.DebugInformation );
-					}
+					packer.Pack( context.Exception.GetExceptionMessage( false ) );
+					//packer.PackMapHeader( context.Exception.DebugInformation == null ? 2 : 3 );
+					//packer.PackString( "ErrorCode" );
+					//packer.Pack( context.Exception.RpcError.ErrorCode );
+					//packer.PackString( "Description" );
+					//packer.PackString( context.Exception.Message );
+					//if ( context.Exception.DebugInformation != null )
+					//{
+					//    packer.PackString( "DebugInformation" );
+					//    packer.PackString( context.Exception.DebugInformation );
+					//}
 				}
 			}
 		}
-		
-		public RpcErrorMessage Deserialize( RpcInputBuffer buffer, out ResponseMessage result )
+
+		/// <summary>
+		///		Deserialize response message from specified buffer.
+		/// </summary>
+		/// <param name="input">Buffer which stores serialized request/notification stream.</param>
+		/// <param name="result">Deserialied packed message will be stored.</param>
+		/// <returns>Error information.</returns>
+		/// <exception cref="ArgumentNullException">
+		///		<paramref name="input"/> is null.
+		/// </exception>
+		/// <exception cref="InvalidOperationException">
+		///		Some filters violate contract.
+		/// </exception>
+		public RpcErrorMessage Deserialize( RpcInputBuffer input, out ResponseMessage result )
 		{
-			if ( buffer == null )
+			if ( input == null )
 			{
-				throw new ArgumentNullException( "buffer" );
+				throw new ArgumentNullException( "input" );
 			}
 
 			Contract.EndContractBlock();
 
-			var context = new ResponseMessageDeserializationContext( buffer, this._maxRequestLength );
+			var context = new ResponseMessageDeserializationContext( input, this._maxRequestLength );
 			var sequence = context.ReadBytes();
 
 			foreach ( var preDeserializationFilter in this._preDeserializationFilters )
@@ -173,11 +196,11 @@ namespace MsgPack.Rpc.Serialization
 
 			if ( !context.Error.IsNil )
 			{
-				result = new ResponseMessage( context.MessageId, RpcException.FromMessage( context.Error, context.DeserializedResult.Value ) );
+				result = new ResponseMessage( context.MessageId, RpcException.FromMessage( context.Error, context.DeserializedResult ) );
 			}
 			else
 			{
-				result = new ResponseMessage( context.MessageId, context.DeserializedResult.Value );
+				result = new ResponseMessage( context.MessageId, context.DeserializedResult );
 			}
 
 			return RpcErrorMessage.Success;
@@ -242,15 +265,8 @@ namespace MsgPack.Rpc.Serialization
 				context.Error = requestFields[ 2 ];
 
 				// If error is specified, this value should be nil by original spec, but currently should specify error information.
-				context.SetDeserializedResult( requestFields[ 3 ] );
+				context.DeserializedResult = requestFields[ 3 ];
 			}
-		}
-
-		// FIXME: Must use PpcBuffer, and reset it buffer appropriately.
-		[Obsolete]
-		public ResponseMessage? Deserialize( IEnumerable<byte> input, out RpcErrorMessage error )
-		{
-			throw new NotImplementedException();
 		}
 	}
 }

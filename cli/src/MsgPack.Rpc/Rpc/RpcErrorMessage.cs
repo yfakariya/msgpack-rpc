@@ -21,6 +21,7 @@
 using System;
 using System.Diagnostics.Contracts;
 using System.Globalization;
+using System.Collections.Generic;
 
 namespace MsgPack.Rpc
 {
@@ -29,8 +30,17 @@ namespace MsgPack.Rpc
 	/// </summary>
 	public struct RpcErrorMessage
 	{
+		/// <summary>
+		///		Instance which represents success (that is, not error.)
+		/// </summary>
 		public static readonly RpcErrorMessage Success = new RpcErrorMessage();
 
+		/// <summary>
+		///		Get the value whether this instance represents success.
+		/// </summary>
+		/// <value>
+		///		If this instance represents success then true.
+		/// </value>
 		public bool IsSuccess
 		{
 			get { return this._error == null; }
@@ -38,6 +48,15 @@ namespace MsgPack.Rpc
 
 		private readonly RpcError _error;
 
+		/// <summary>
+		///		Get error information for this error.
+		/// </summary>
+		/// <value>
+		///		Error information for this error.
+		/// </value>
+		/// <exception cref="InvalidOperationException">
+		///		<see cref="IsSuccess"/> is true.
+		/// </exception>
 		public RpcError Error
 		{
 			get
@@ -51,23 +70,60 @@ namespace MsgPack.Rpc
 			}
 		}
 
-		private readonly string _description;
+		private readonly MessagePackObject _detail;
 
-		public string Description
+		/// <summary>
+		///		Get detailed error information for this error.
+		/// </summary>
+		/// <value>
+		///		Detailed error information for this error.
+		/// </value>
+		/// <exception cref="InvalidOperationException">
+		///		<see cref="IsSuccess"/> is true.
+		/// </exception>
+		public MessagePackObject Detail
 		{
-			get { return this._description ?? this.Error.DefaultMessage; }
+			get
+			{
+				if ( this._error == null )
+				{
+					throw new InvalidOperationException( "Operation success." );
+				}
+
+				return this._detail;
+			}
 		}
 
-		private readonly string _debugInformation;
-
-		public string DebugInformation
+		/// <summary>
+		///		Initialize new instance.
+		/// </summary>
+		/// <param name="error">Error information of the error.</param>
+		/// <param name="detail">Unpacked detailed information of the error which was occurred in remote endpoint.</param>
+		/// <exception cref="ArgumentNullException">
+		///		<paramref name="error"/> is null.
+		/// </exception>
+		public RpcErrorMessage( RpcError error, MessagePackObject detail )
 		{
-			get { return this._debugInformation ?? String.Empty; }
+			if ( error == null )
+			{
+				throw new ArgumentNullException( "error" );
+			}
+
+			Contract.EndContractBlock();
+
+			this._error = error;
+			this._detail = detail;
 		}
 
-		public RpcErrorMessage( RpcError error, string description )
-			: this( error, description, null ) { }
-
+		/// <summary>
+		///		Initialize new instance.
+		/// </summary>
+		/// <param name="error">Error information of the error.</param>
+		/// <param name="description">Description of the error which was occurred in local.</param>
+		/// <param name="debugInformation">Detailed debug information of the error which was occurred in local.</param>
+		/// <exception cref="ArgumentNullException">
+		///		<paramref name="error"/> is null.
+		/// </exception>
 		public RpcErrorMessage( RpcError error, string description, string debugInformation )
 		{
 			if ( error == null )
@@ -78,24 +134,45 @@ namespace MsgPack.Rpc
 			Contract.EndContractBlock();
 
 			this._error = error;
-			this._description = description;
-			this._debugInformation = debugInformation;
+			var data = new Dictionary<MessagePackObject, MessagePackObject>();
+			data.Add( RpcException.MessageKeyUtf8, description );
+			data.Add( RpcException.DebugInformationKeyUtf8, debugInformation );
+			this._detail = new MessagePackObject( data );
 		}
 
+		/// <summary>
+		///		Returns string representation of this error.
+		/// </summary>
+		/// <returns>
+		///		String representation of this error.
+		/// </returns>
 		public override string ToString()
 		{
 			if ( this.IsSuccess )
 			{
 				return String.Empty;
 			}
-			else if ( String.IsNullOrEmpty( this._debugInformation ) )
-			{
-				return String.Format( CultureInfo.CurrentCulture, "{0}({1}):{2}", this._error.Identifier, this._error.ErrorCode, this._description ?? this._error.DefaultMessage );
-			}
 			else
 			{
-				return String.Format( CultureInfo.CurrentCulture, "{1}({2}):{3}{0}{4}", Environment.NewLine, this._error.Identifier, this._error.ErrorCode, this._description ?? this._error.DefaultMessage, this._debugInformation );
+				return String.Format( CultureInfo.CurrentCulture, "{0}({1}):{2}", this._error.Identifier, this._error.ErrorCode, this._detail.IsNil ? "(nil)" : this._detail );
 			}
+		}
+
+		/// <summary>
+		///		Get <see cref="RpcException"/> which corresponds to this error.
+		/// </summary>
+		/// <returns><see cref="RpcException"/> which corresponds to this error.</returns>
+		/// <exception cref="InvalidOperationException">
+		///		<see cref="IsSuccess"/> is true.
+		/// </exception>
+		internal RpcException ToException()
+		{
+			if ( this.IsSuccess )
+			{
+				throw new InvalidOperationException( "Operation has been succeeded." );
+			}
+
+			return this._error.ToException( this._detail );
 		}
 	}
 }

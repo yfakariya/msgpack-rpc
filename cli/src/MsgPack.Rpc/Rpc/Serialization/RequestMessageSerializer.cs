@@ -29,62 +29,57 @@ using MsgPack.Rpc.Protocols;
 
 namespace MsgPack.Rpc.Serialization
 {
+	// FIXME: test
 	/// <summary>
 	///		Serialize outgoing request/notification message and deserialize incoming request/notification message.
 	/// </summary>
 	public sealed class RequestMessageSerializer
 	{
-		private readonly List<IFilterProvider<RequestMessageSerializationFilter>> _preSerializationFilters;
-		private readonly List<IFilterProvider<SerializedMessageFilter<MessageSerializationContext>>> _postSerializationFilters;
-		private readonly List<IFilterProvider<SerializedMessageFilter<MessageDeserializationContext>>> _preDeserializationFilters;
-		private readonly List<IFilterProvider<RequestMessageDeserializationFilter>> _postDeserializationFilters;
+		private readonly IList<IFilterProvider<RequestMessageSerializationFilter>> _preSerializationFilters;
+		private readonly IList<IFilterProvider<SerializedMessageFilter<MessageSerializationContext>>> _postSerializationFilters;
+		private readonly IList<IFilterProvider<SerializedMessageFilter<MessageDeserializationContext>>> _preDeserializationFilters;
+		private readonly IList<IFilterProvider<RequestMessageDeserializationFilter>> _postDeserializationFilters;
 		private readonly int? _maxRequestLength;
 
 		public RequestMessageSerializer(
-			List<IFilterProvider<RequestMessageSerializationFilter>> preSerializationFilters,
-			List<IFilterProvider<SerializedMessageFilter<MessageSerializationContext>>> postSerializationFilters,
-			List<IFilterProvider<SerializedMessageFilter<MessageDeserializationContext>>> preDeserializationFilters,
-			List<IFilterProvider<RequestMessageDeserializationFilter>> postDeserializationFilters,
+			IList<IFilterProvider<RequestMessageSerializationFilter>> preSerializationFilters,
+			IList<IFilterProvider<SerializedMessageFilter<MessageSerializationContext>>> postSerializationFilters,
+			IList<IFilterProvider<SerializedMessageFilter<MessageDeserializationContext>>> preDeserializationFilters,
+			IList<IFilterProvider<RequestMessageDeserializationFilter>> postDeserializationFilters,
 			int? maxRequestLength
 			)
 		{
 			Contract.Assert( maxRequestLength.GetValueOrDefault() >= 0 );
 
-			this._preSerializationFilters = preSerializationFilters ?? Constants.EmptyRequestMessageSerializationFilterProviders;
-			this._postSerializationFilters = postSerializationFilters ?? Constants.EmptySerializedMessageFilterProviders;
-			this._preDeserializationFilters = preDeserializationFilters ?? Constants.EmptyDeserializedMessageFilterProviders;
-			this._postDeserializationFilters = postDeserializationFilters ?? Constants.EmptyRequestMessageDeserializationFilterProviders;
+			this._preSerializationFilters = preSerializationFilters ?? Arrays<IFilterProvider<RequestMessageSerializationFilter>>.Empty;
+			this._postSerializationFilters = postSerializationFilters ?? Arrays<IFilterProvider<SerializedMessageFilter<MessageSerializationContext>>>.Empty;
+			this._preDeserializationFilters = preDeserializationFilters ?? Arrays<IFilterProvider<SerializedMessageFilter<MessageDeserializationContext>>>.Empty;
+			this._postDeserializationFilters = postDeserializationFilters ?? Arrays<IFilterProvider<RequestMessageDeserializationFilter>>.Empty;
 			this._maxRequestLength = maxRequestLength;
 		}
 
-		public RpcErrorMessage Serialize( MessageType type, int? messageId, string method, IList<object> arguments, RpcOutputBuffer buffer )
+		/// <summary>
+		///		Serialize RPC call to specified buffer.
+		/// </summary>
+		/// <param name="messageId">ID of message. If message is notification message, specify null.</param>
+		/// <param name="method">Method name to be called.</param>
+		/// <param name="arguments">Arguments of method call.</param>
+		/// <param name="buffer">Buffer to be set serialized stream.</param>
+		/// <returns>Error message of serialization.</returns>
+		/// <exception cref="ArgumentNullException">
+		///		<paramref name="method"/>, <paramref name="arguments"/>, or <paramref name="buffer"/> is null.
+		/// </exception>
+		/// <exception cref="ArgumentException">
+		///		<paramref name="method"/> is illegal.
+		/// </exception>
+		public RpcErrorMessage Serialize( int? messageId, string method, IList<object> arguments, RpcOutputBuffer buffer )
 		{
-			switch ( type )
-			{
-				case MessageType.Request:
-				{
-					if ( messageId == null )
-					{
-						throw new ArgumentNullException( "messageId", "'messageId' must not be null when type is MessageType.Request." );
-					}
-
-					break;
-				}
-				case MessageType.Notification:
-				{
-					break;
-				}
-				default:
-				{
-					throw new ArgumentOutOfRangeException( "type", "'type' must be MessageType.Request or MessageType.Notification." );
-				}
-			}
-
 			if ( method == null )
 			{
 				throw new ArgumentNullException( "method" );
 			}
 
+			// TODO: more strict validation.
 			if ( String.IsNullOrWhiteSpace( method ) )
 			{
 				throw new ArgumentException( "'method' must not be empty nor blank.", "method" );
@@ -113,7 +108,7 @@ namespace MsgPack.Rpc.Serialization
 				}
 			}
 
-			SerializeCore( buffer, type, messageId, context );
+			SerializeCore( buffer, messageId, context );
 			if ( !context.SerializationError.IsSuccess )
 			{
 				return context.SerializationError;
@@ -134,13 +129,13 @@ namespace MsgPack.Rpc.Serialization
 			return RpcErrorMessage.Success;
 		}
 
-		private static void SerializeCore( RpcOutputBuffer buffer, MessageType messageType, int? messageId, RequestMessageSerializationContext context )
+		private static void SerializeCore( RpcOutputBuffer buffer, int? messageId, RequestMessageSerializationContext context )
 		{
-			using ( var stream = buffer.OpenStream( true ) )
+			using ( var stream = buffer.OpenStream() )
 			using ( var packer = Packer.Create( stream ) )
 			{
 				packer.PackArrayHeader( messageId == null ? 3 : 4 );
-				packer.Pack( ( int )messageType );
+				packer.Pack( ( int )( messageId == null ? MessageType.Notification : MessageType.Request ) );
 
 				if ( messageId != null )
 				{
@@ -152,61 +147,18 @@ namespace MsgPack.Rpc.Serialization
 			}
 		}
 
-		[Obsolete]
-		public IEnumerable<byte> Serialize( MessageType type, int? messageId, string method, IList<object> arguments, int initialBufferLength, out RpcErrorMessage error )
-		{
-			throw new NotImplementedException();
-			//Contract.Assert( ( type == MessageType.Request && messageId != null ) || ( type == MessageType.Notification && messageId == null ) );
-			//Contract.Assert( !String.IsNullOrWhiteSpace( method ) );
-			//Contract.Assert( arguments != null );
-
-			//var context = new RequestMessageSerializationContext( null, method, arguments );
-
-			//foreach ( var preSerializationFilter in this._preSerializationFilters )
-			//{
-			//    preSerializationFilter.GetFilter().Process( context );
-			//    if ( !context.SerializationError.IsSuccess )
-			//    {
-			//        error = context.SerializationError;
-			//        return Enumerable.Empty<byte>();
-			//    }
-			//}
-
-			//var sequence = SerializeCore( type, messageId, context.MethodName, context.Arguments, initialBufferLength );
-			//foreach ( var postSerializationFilter in this._postSerializationFilters )
-			//{
-			//    sequence = postSerializationFilter.GetFilter().Process( sequence, context );
-			//    if ( !context.SerializationError.IsSuccess )
-			//    {
-			//        error = context.SerializationError;
-			//        return Enumerable.Empty<byte>();
-			//    }
-			//}
-
-			//error = RpcErrorMessage.Success;
-			//return sequence;
-		}
-
-		private static IEnumerable<byte> SerializeCore( MessageType messageType, int? messageId, string method, IList<object> arguments, int initialBufferLength )
-		{
-			// TODO: stream serialization MPO* -> IEnumerable<byte>
-			var buffer = new MemoryStream( initialBufferLength );
-			Packer packer = Packer.Create( buffer );
-			packer.Pack( ( int )messageType );
-			if ( messageId != null )
-			{
-				packer.Pack( messageId );
-			}
-			packer.PackString( method );
-			packer.PackItems( arguments );
-
-			buffer.Position = 0;
-			for ( int read = buffer.ReadByte(); read >= 0; read = buffer.ReadByte() )
-			{
-				yield return unchecked( ( byte )read );
-			}
-		}
-
+		/// <summary>
+		///		Deserialize from specified buffer.
+		/// </summary>
+		/// <param name="input">Buffer which stores serialized request/notification stream.</param>
+		/// <param name="result">Deserialied packed message will be stored.</param>
+		/// <returns>Error information.</returns>
+		/// <exception cref="ArgumentNullException">
+		///		<paramref name="input"/> is null.
+		/// </exception>
+		/// <exception cref="InvalidOperationException">
+		///		Some filters violate contract.
+		/// </exception>
 		public RpcErrorMessage Deserialize( RpcInputBuffer input, out RequestMessage result )
 		{
 			if ( input == null )
@@ -335,7 +287,7 @@ namespace MsgPack.Rpc.Serialization
 
 				try
 				{
-					context.MethodName = requestFields[ nextPosition ].AsString( Constants.MethodEncoding );
+					context.MethodName = MessagePackConvert.DecodeStringStrict( requestFields[ nextPosition ].AsBinary() );
 				}
 				catch ( InvalidOperationException ex )
 				{
@@ -353,163 +305,6 @@ namespace MsgPack.Rpc.Serialization
 
 				context.Arguments = requestFields[ nextPosition ].AsList();
 			}
-		}
-
-		// FIXME: Must use PpcBuffer, and reset it buffer appropriately.
-		[Obsolete]
-		public RequestMessage Deserialize( IEnumerable<byte> input, out RpcErrorMessage error )
-		{
-			throw new NotImplementedException();
-			//Contract.Assert( input != null );
-
-			//var context = new RequestMessageDeserializationContext()
-
-			//var sequence = this.CheckMessageLength( input, context );
-			//foreach ( var preDeserializationFilter in this._preDeserializationFilters )
-			//{
-			//    sequence = preDeserializationFilter.GetFilter().Process( input, context );
-			//    if ( !context.SerializationError.IsSuccess )
-			//    {
-			//        error = context.SerializationError;
-			//        return default( RequestMessage );
-			//    }
-			//}
-
-			//if ( this._preDeserializationFilters.Any() )
-			//{
-			//    sequence = this.CheckMessageLength( sequence, context );
-			//}
-
-			//DeserializeCore( sequence, context );
-
-			//foreach ( var postDeserializationFilter in this._postDeserializationFilters )
-			//{
-			//    postDeserializationFilter.GetFilter().Process( context );
-			//    if ( !context.SerializationError.IsSuccess )
-			//    {
-			//        error = context.SerializationError;
-			//        return default( RequestMessage );
-			//    }
-			//}
-
-			//if ( !String.IsNullOrWhiteSpace( context.MethodName ) )
-			//{
-			//    throw new InvalidOperationException( "Filter became method null or empty." );
-			//}
-
-			//if ( context.Arguments == null )
-			//{
-			//    throw new InvalidOperationException( "Filter became arguments null." );
-			//}
-
-			//error = RpcErrorMessage.Success;
-			//return new RequestMessage( context.MessageId, context.MethodName, context.Arguments );
-		}
-
-		private IEnumerable<byte> CheckMessageLength( IEnumerable<byte> source, SerializationErrorSink context )
-		{
-			throw new NotImplementedException();
-			//if ( source == null )
-			//{
-			//    throw new InvalidOperationException( "filter became source byte stream null." );
-			//}
-
-			//int count = 0;
-			//foreach ( var b in source )
-			//{
-			//    if ( ++count > this._maxRequestLength )
-			//    {
-			//        context.SerializationError = new RpcErrorMessage( RpcError.MessageTooLargeError, null, String.Format( CultureInfo.CurrentCulture, "Message must be equal or lessor than {0} bytes.", this._maxRequestLength ) );
-			//        yield break;
-			//    }
-
-			//    yield return b;
-			//}
-		}
-
-		private static void DeserializeCore( IEnumerable<byte> sequence, RequestMessageDeserializationContext context )
-		{
-			//using ( var stream = new EnumerableStream( sequence ) )
-			//{
-			//    var request = Unpacking.UnpackObject( stream );
-			//    if ( request == null )
-			//    {
-			//        context.SerializationError = new RpcErrorMessage( RpcError.MessageRefusedError, "Invalid message.", "Cannot deserialize message stream." );
-			//        return;
-			//    }
-
-			//    if ( !request.Value.IsTypeOf<IList<MessagePackObject>>().GetValueOrDefault() )
-			//    {
-			//        context.SerializationError = new RpcErrorMessage( RpcError.MessageRefusedError, "Invalid message.", "Request message is not array." );
-			//        return;
-			//    }
-
-			//    var requestFields = request.Value.AsList();
-			//    if ( requestFields.Count > 4 || requestFields.Count < 3 )
-			//    {
-			//        context.SerializationError = new RpcErrorMessage( RpcError.MessageRefusedError, "Invalid message.", "Request message is not 3 nor 4 element array." );
-			//        return;
-			//    }
-
-			//    if ( !requestFields[ 0 ].IsTypeOf<int>().GetValueOrDefault() )
-			//    {
-			//        context.SerializationError = new RpcErrorMessage( RpcError.MessageRefusedError, "Invalid message.", "Message type of request message is not int 32." );
-			//        return;
-			//    }
-
-			//    int nextPosition = 1;
-			//    switch ( ( MessageType )requestFields[ 0 ].AsInt32() )
-			//    {
-			//        case MessageType.Request:
-			//        {
-			//            if ( !requestFields[ nextPosition ].IsTypeOf<int>().GetValueOrDefault() )
-			//            {
-			//                context.SerializationError = new RpcErrorMessage( RpcError.MessageRefusedError, "Invalid message.", "Message ID of request message is not int32." );
-			//                return;
-			//            }
-
-			//            context.MessageId = requestFields[ nextPosition ].AsInt32();
-
-			//            nextPosition++;
-			//            break;
-			//        }
-			//        case MessageType.Notification:
-			//        {
-			//            break;
-			//        }
-			//        default:
-			//        {
-			//            context.SerializationError = new RpcErrorMessage( RpcError.MessageRefusedError, "Invalid message.", "Message type of request message is not Request(0) nor Notification(2)." );
-			//            return;
-			//        }
-			//    }
-
-			//    if ( !requestFields[ nextPosition ].IsTypeOf<string>().GetValueOrDefault() )
-			//    {
-			//        context.SerializationError = new RpcErrorMessage( RpcError.MessageRefusedError, "Invalid message.", String.Format( CultureInfo.CurrentCulture, "Method of request message (ID:{0}) is not raw. ", context.MessageId ) );
-			//        return;
-			//    }
-
-			//    try
-			//    {
-			//        context.MethodName = requestFields[ nextPosition ].AsString( Constants.MethodEncoding );
-			//    }
-			//    catch ( InvalidOperationException ex )
-			//    {
-			//        context.SerializationError = new RpcErrorMessage( RpcError.MessageRefusedError, "Invalid message.", String.Format( CultureInfo.CurrentCulture, "Message ID:{0}: {1}", context.MessageId, ex.Message ) );
-			//        return;
-			//    }
-
-			//    nextPosition++;
-
-			//    if ( !requestFields[ nextPosition ].IsTypeOf<IList<MessagePackObject>>().GetValueOrDefault() )
-			//    {
-			//        context.SerializationError = new RpcErrorMessage( RpcError.MessageRefusedError, "Invalid message.", String.Format( CultureInfo.CurrentCulture, "Arguments of request message (ID:{0}) is not array.", context.MessageId ) );
-			//        return;
-			//    }
-
-			//    context.Arguments = requestFields[ nextPosition ].AsList();
-			//}
 		}
 	}
 }

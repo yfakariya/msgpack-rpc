@@ -30,6 +30,12 @@ namespace MsgPack.Rpc.Serialization
 	{
 		private int _messageId;
 
+		/// <summary>
+		///		Get message ID of this message.
+		/// </summary>
+		/// <value>
+		///		Message ID of this message.
+		/// </value>
 		public int MessageId
 		{
 			get { return this._messageId; }
@@ -38,24 +44,37 @@ namespace MsgPack.Rpc.Serialization
 
 		private MessagePackObject _error;
 
+		/// <summary>
+		///		Get error of this message.
+		/// </summary>
+		/// <value>
+		///		Error of this message.
+		/// </value>
 		public MessagePackObject Error
 		{
 			get { return this._error; }
-			set { this._error = value; }
+			internal set { this._error = value; }
 		}
 
-		private MessagePackObject? _deserializedResult;
+		private MessagePackObject _deserializedResult;
 
-		public MessagePackObject? DeserializedResult
+		/// <summary>
+		///		Get return value or error detail of this message.
+		/// </summary>
+		/// <value>
+		///		Return value or error detail of this message.
+		/// </value>
+		public MessagePackObject DeserializedResult
 		{
 			get { return this._deserializedResult; }
+			internal set { this._deserializedResult = value; }
 		}
 
-		public void SetDeserializedResult( MessagePackObject returnValueOrError )
-		{
-			this._deserializedResult = returnValueOrError;
-		}
-
+		/// <summary>
+		///		Initialize new instance.
+		/// </summary>
+		/// <param name="buffer">Buffer which contains packed stream.</param>
+		/// <param name="maxLength">Maximum quota.</param>
 		internal ResponseMessageDeserializationContext( RpcInputBuffer buffer, int? maxLength )
 			: base( buffer, maxLength ) { }
 	}

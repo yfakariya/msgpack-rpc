@@ -19,22 +19,17 @@
 #endregion -- License Terms --
 
 using System;
-using MsgPack.Rpc.Protocols;
-namespace MsgPack.Rpc
+
+namespace MsgPack.Rpc.Protocols
 {
+	// TODO: This should be abstract class for versioning.
+
 	/// <summary>
-	///		Defines common interface of error sink for current RPC session.
+	///		Define interface of Message ID generator.
 	/// </summary>
-	public interface IAsyncSessionErrorSink
+	public interface IMessageIdGenerator
 	{
-		Exception Error { get; }
-		void OnError( Exception error, bool completedSynchronously );
-	}
-
-
-	public interface IResponseHandler
-	{
-		void HandleResponse( ResponseMessage response );
-		void HandleError( RpcErrorMessage error );
+		int NextId();
+		void ReturnId( int disposal );
 	}
 }

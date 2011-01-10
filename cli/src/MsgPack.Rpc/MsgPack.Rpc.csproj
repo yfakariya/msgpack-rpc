@@ -57,25 +57,22 @@
     <Compile Include="..\CommonAssemblyInfo.Rpc.cs">
       <Link>Properties\CommonAssemblyInfo.Rpc.cs</Link>
     </Compile>
-    <Compile Include="Collections\AdHocPseudoBufferPool.cs" />
-    <Compile Include="Collections\ArraySegmentExtensions.cs" />
-    <Compile Include="Collections\ArraySegmentsExtensions.cs" />
-    <Compile Include="Collections\BufferPool.cs" />
-    <Compile Include="Collections\ByteArraySegmentExtensions.cs" />
     <Compile Include="Collections\Concurrent\NotifiableBlockingCollection`1.cs" />
+    <Compile Include="Collections\MessagePackObjectDictionary.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Rpc\AsyncResult.cs">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Rpc\Constants.cs">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="Rpc\IAsyncSessionErrorSink.cs" />
+    <Compile Include="Rpc\Protocols\IAsyncSessionErrorSink.cs" />
     <Compile Include="Rpc\MessageAsyncResult.cs">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Rpc\Protocols\EventLoop.cs" />
     <Compile Include="Rpc\IFilterProvider`1.cs" />
+    <Compile Include="Rpc\Protocols\IResponseHandler.cs" />
+    <Compile Include="Rpc\Protocols\RpcSocket.cs" />
+    <Compile Include="Rpc\Protocols\RpcSocketAsyncEventArgs.cs" />
+    <Compile Include="Rpc\Protocols\SimpleRpcSocket.cs" />
     <Compile Include="Rpc\Serialization\BufferFeeding.cs" />
     <Compile Include="Rpc\Serialization\MessageDeserializationContext.cs" />
     <Compile Include="Rpc\Serialization\RequestMessageSerializationFilter.cs" />
@@ -115,11 +112,12 @@
     <Compile Include="Rpc\RpcException.cs" />
     <Compile Include="Rpc\RpcFaultException.cs" />
     <Compile Include="Rpc\RpcServerUnavailableException.cs" />
-    <Compile Include="Validation.cs" />
   </ItemGroup>
-  <ItemGroup />
   <ItemGroup>
-    <ProjectReference Include="..\..\..\..\msgpack\cs\src\MsgPack\MsgPack.csproj">
+    <Compile Include="Rpc\RpcException.Propagation.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\..\msgpack\cli\src\MsgPack\MsgPack.csproj">
       <Project>{5BCEC32E-990E-4DE5-945F-BD27326A7418}</Project>
       <Name>MsgPack</Name>
     </ProjectReference>

@@ -68,20 +68,12 @@ namespace MsgPack.Rpc.Serialization
 			}
 
 			// TODO: Mock filters
-			var target =
-				new ResponseMessageSerializer(
-					Constants.EmptyResponseMessageSerializationFilterProviders,
-					Constants.EmptySerializedMessageFilterProviders,
-					Constants.EmptyDeserializedMessageFilterProviders,
-					Constants.EmptyResponseMessageDeserializationFilterProviders,
-					null
-				);
+			var target = new ResponseMessageSerializer( null, null, null, null, null );
 
-			var bufferPool = new AdHocPseudoBufferPool();
-			var buffer = new RpcOutputBuffer( bufferPool );
+			var buffer = new RpcOutputBuffer();
 
 			Assert.IsTrue( target.Serialize( id, returnValue, isVoid, error, buffer ).IsSuccess );
-			byte[] serialized = buffer.Chunks.ReadAll().ToArray();
+			byte[] serialized = buffer.ReadBytes().ToArray();
 			var mpo =
 				new MessagePackObject(
 					new MessagePackObject[]
@@ -90,31 +82,20 @@ namespace MsgPack.Rpc.Serialization
 						new MessagePackObject( ( uint )id ),
 						error == null ? MessagePackObject.Nil : error.RpcError.Identifier,
 						returnValue == null 
-							? ( error == null ? MessagePackObject.Nil : ToErrorDetail(error) )
+							? ( error == null ? MessagePackObject.Nil : error.GetExceptionMessage( false ) )
 							: MessagePackObject.FromObject( returnValue )						
 					}
 				);
 			var stream = new MemoryStream();
 			Packer.Create( stream ).Pack( mpo );
-			CollectionAssert.AreEqual( stream.ToArray(), serialized );
-		}
-
-		private static MessagePackObject ToErrorDetail( RpcException error )
-		{
-			if ( error == null )
-			{
-				return MessagePackObject.Nil;
-			}
-
-			var dictionary = new Dictionary<MessagePackObject, MessagePackObject>( 3 );
-			dictionary[ "ErrorCode" ] = error.RpcError.ErrorCode;
-			dictionary[ "Description" ] = error.Message;
-			if ( error.DebugInformation != null )
-			{
-				dictionary[ "DebugInformation" ] = error.DebugInformation;
-			}
-
-			return new MessagePackObject( dictionary );
+			CollectionAssert.AreEqual(
+				stream.ToArray(),
+				serialized,
+				"Expected:{0}{1}{0}Actual:{0}{2}",
+				Environment.NewLine,
+				mpo,
+				new Unpacker( serialized ).UnpackObject()
+			);
 		}
 
 		[Test]
@@ -149,16 +130,7 @@ namespace MsgPack.Rpc.Serialization
 			}
 
 			// TODO: Mock filters
-			var target =
-				new ResponseMessageSerializer(
-					Constants.EmptyResponseMessageSerializationFilterProviders,
-					Constants.EmptySerializedMessageFilterProviders,
-					Constants.EmptyDeserializedMessageFilterProviders,
-					Constants.EmptyResponseMessageDeserializationFilterProviders,
-					null
-				);
-
-			var bufferPool = new AdHocPseudoBufferPool();
+			var target = new ResponseMessageSerializer( null, null, null, null, null );
 
 			var expected =
 				new MessagePackObject(
@@ -168,22 +140,21 @@ namespace MsgPack.Rpc.Serialization
 						new MessagePackObject( ( uint )id ),
 						error == null ? MessagePackObject.Nil : error.RpcError.Identifier,
 						returnValue == null 
-							? ( error == null ? MessagePackObject.Nil : ToErrorDetail(error) )
+							? ( error == null ? MessagePackObject.Nil : error.GetExceptionMessage( false ) )
 							: MessagePackObject.FromObject( returnValue )					
 					}
 				);
 			var stream = new MemoryStream();
 			Packer.Create( stream ).Pack( expected );
 			var serialized = stream.ToArray();
-			using ( var underlying = bufferPool.Borrow( serialized.Length ) )
+			using ( var underlying = ChunkBuffer.CreateDefault() )
 			{
-				underlying.Fill( serialized );
+				underlying.Feed( new ArraySegment<byte>( serialized ) );
 				using ( var buffer = new RpcInputBuffer( underlying, serialized.Length, FeedingNotRequired ) )
 				{
 					ResponseMessage actual;
 					var result = target.Deserialize( buffer, out actual );
 					Assert.IsTrue( result.IsSuccess, result.ToString() );
-					Assert.AreEqual( ( int )MessageType.Response, actual.MessageType.AsInt32() );
 					Assert.AreEqual( id, actual.MessageId );
 					if ( isVoid || returnValue == null )
 					{
@@ -201,11 +172,11 @@ namespace MsgPack.Rpc.Serialization
 					else
 					{
 						Assert.AreEqual( expected.AsList()[ 2 ].AsString(), actual.Error.RpcError.Identifier );
-						Assert.AreEqual( expected.AsList()[ 3 ].AsDictionary()[ "ErrorCode" ].AsInt32(), actual.Error.RpcError.ErrorCode );
-						Assert.AreEqual( expected.AsList()[ 3 ].AsDictionary()[ "Description" ].AsString(), actual.Error.Message );
-						if ( expected.AsList()[ 3 ].AsDictionary().ContainsKey( "DebugInformation" ) )
+						Assert.AreEqual( expected.AsList()[ 3 ].AsDictionary()[ MessagePackConvert.EncodeString( "ErrorCode" ) ].AsInt32(), actual.Error.RpcError.ErrorCode );
+						Assert.AreEqual( expected.AsList()[ 3 ].AsDictionary()[ MessagePackConvert.EncodeString( "Message" ) ].AsString(), actual.Error.Message );
+						if ( expected.AsList()[ 3 ].AsDictionary().ContainsKey( MessagePackConvert.EncodeString( "DebugInformation" ) ) )
 						{
-							Assert.AreEqual( expected.AsList()[ 3 ].AsDictionary()[ "DebugInformation" ].AsString(), actual.Error.DebugInformation );
+							Assert.AreEqual( expected.AsList()[ 3 ].AsDictionary()[ MessagePackConvert.EncodeString( "DebugInformation" ) ].AsString(), actual.Error.DebugInformation );
 						}
 						else
 						{
@@ -247,16 +218,7 @@ namespace MsgPack.Rpc.Serialization
 				Assert.IsFalse( isVoid, "isVoid should be false in error test." );
 			}
 			// TODO: Mock filters
-			var target =
-				new ResponseMessageSerializer(
-					Constants.EmptyResponseMessageSerializationFilterProviders,
-					Constants.EmptySerializedMessageFilterProviders,
-					Constants.EmptyDeserializedMessageFilterProviders,
-					Constants.EmptyResponseMessageDeserializationFilterProviders,
-					null
-				);
-
-			var bufferPool = new AdHocPseudoBufferPool();
+			var target = new ResponseMessageSerializer( null, null, null, null, null );
 
 			var expected =
 				new MessagePackObject(
@@ -266,7 +228,7 @@ namespace MsgPack.Rpc.Serialization
 						new MessagePackObject( ( uint )id ),
 						error == null ? MessagePackObject.Nil : error.RpcError.Identifier,
 						returnValue == null 
-							? ( error == null ? MessagePackObject.Nil : ToErrorDetail(error) )
+							? ( error == null ? MessagePackObject.Nil : error.GetExceptionMessage( false ) )
 							: MessagePackObject.FromObject( returnValue )						
 					}
 				);
@@ -275,9 +237,9 @@ namespace MsgPack.Rpc.Serialization
 			var serialized = stream.ToArray();
 			var packets = Segmentate( serialized, 10 ).ToArray();
 			int indexOfPackets = 0;
-			using ( var underlying = bufferPool.Borrow( 10 ) )
+			using ( var underlying = ChunkBuffer.CreateDefault() )
 			{
-				Assert.AreEqual( Math.Min( serialized.Length, 10L ), underlying.Fill( packets[ 0 ] ) );
+				underlying.Feed( new ArraySegment<byte>( packets[ 0 ] ) );
 				using ( var buffer =
 					new RpcInputBuffer(
 						underlying,
@@ -291,16 +253,14 @@ namespace MsgPack.Rpc.Serialization
 								//Assert.Fail( "Over requesting." );
 							}
 
-							var reallocated = item.Reallocate( 10 );
-
-							return new BufferFeeding( ( int )reallocated.Fill( packets[ indexOfPackets ], 10 * indexOfPackets ), reallocated );
+							item.Feed( new ArraySegment<byte>( packets[ indexOfPackets ] ) );
+							return new BufferFeeding( packets[ indexOfPackets ].Length );
 						}
 					) )
 				{
 					ResponseMessage actual;
 					var result = target.Deserialize( buffer, out actual );
 					Assert.IsTrue( result.IsSuccess, result.ToString() );
-					Assert.AreEqual( ( int )MessageType.Response, actual.MessageType.AsInt32() );
 					Assert.AreEqual( id, actual.MessageId );
 					if ( isVoid || returnValue == null )
 					{
@@ -318,11 +278,11 @@ namespace MsgPack.Rpc.Serialization
 					else
 					{
 						Assert.AreEqual( expected.AsList()[ 2 ].AsString(), actual.Error.RpcError.Identifier );
-						Assert.AreEqual( expected.AsList()[ 3 ].AsDictionary()[ "ErrorCode" ].AsInt32(), actual.Error.RpcError.ErrorCode );
-						Assert.AreEqual( expected.AsList()[ 3 ].AsDictionary()[ "Description" ].AsString(), actual.Error.Message );
-						if ( expected.AsList()[ 3 ].AsDictionary().ContainsKey( "DebugInformation" ) )
+						Assert.AreEqual( expected.AsList()[ 3 ].AsDictionary()[ MessagePackConvert.EncodeString( "ErrorCode" ) ].AsInt32(), actual.Error.RpcError.ErrorCode );
+						Assert.AreEqual( expected.AsList()[ 3 ].AsDictionary()[ MessagePackConvert.EncodeString( "Message" ) ].AsString(), actual.Error.Message );
+						if ( expected.AsList()[ 3 ].AsDictionary().ContainsKey( MessagePackConvert.EncodeString( "DebugInformation" ) ) )
 						{
-							Assert.AreEqual( expected.AsList()[ 3 ].AsDictionary()[ "DebugInformation" ].AsString(), actual.Error.DebugInformation );
+							Assert.AreEqual( expected.AsList()[ 3 ].AsDictionary()[ MessagePackConvert.EncodeString( "DebugInformation" ) ].AsString(), actual.Error.DebugInformation );
 						}
 						else
 						{

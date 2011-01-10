@@ -27,6 +27,7 @@ using System.Diagnostics.Contracts;
 
 namespace MsgPack
 {
+	[CLSCompliant( false )]
 	[SetUpFixture]
 	public sealed class _SetUpFixture
 	{

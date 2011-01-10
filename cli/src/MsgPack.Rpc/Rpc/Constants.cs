@@ -27,15 +27,21 @@ using MsgPack.Rpc.Serialization;
 
 namespace MsgPack.Rpc
 {
+	// FIXME: refactor
 	/// <summary>
 	///		Define common constants.
 	/// </summary>
 	internal static class Constants
 	{
+		/// <summary>
+		///		Empty array of <see cref="MessagePackObject"/>.
+		/// </summary>
 		public static readonly MessagePackObject[] EmptyArguments = new MessagePackObject[ 0 ];
-		public static readonly object[] EmptyObjects = new object[ 0 ];
 
-		public static readonly Encoding MethodEncoding = new UTF8Encoding( false, true );
+		/// <summary>
+		///		Empty array of <see cref="Object"/>.
+		/// </summary>
+		public static readonly object[] EmptyObjects = new object[ 0 ];
 
 		private static readonly List<IFilterProvider<RequestMessageSerializationFilter>> _emptyRequestMessageSerializationFilterProviders = new List<IFilterProvider<RequestMessageSerializationFilter>>( 0 );
 

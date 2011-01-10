@@ -20,56 +20,80 @@
 
 using System;
 using System.Threading;
+using MsgPack.Rpc.Protocols;
 
 namespace MsgPack.Rpc
 {
 	/// <summary>
 	///		Common <see cref="IAsyncResult"/> implementation for MsgPack-RPC async invocation.
 	/// </summary>
-	internal class MessageAsyncResult : WrapperAsyncResult, IAsyncSessionErrorSink, IResponseHandler
+	internal class MessageAsyncResult : AsyncResult, IAsyncSessionErrorSink, IResponseHandler
 	{
 		private readonly int? _messageId;
 
+		/// <summary>
+		///		Get ID of message.
+		/// </summary>
+		/// <value>ID of message.</value>
 		public int? MessageId
 		{
 			get { return this._messageId; }
 		}
 
-		private Exception _error;
+		private ResponseMessage? _response;
 
-		public Exception Error
-		{
-			get { return this._error; }
-		}
-
-		public void OnError( Exception error, bool completedSynchronously )
-		{
-			try { }
-			finally
-			{
-				Interlocked.Exchange( ref this._error, error );
-				base.Complete( completedSynchronously );
-			}
-		}
-
-		private Protocols.ResponseMessage? _response;
-
-		public void HandleResponse( Protocols.ResponseMessage response )
+		/// <summary>
+		///		Complete this invocation as success.
+		/// </summary>
+		/// <param name="response">
+		///		Replied response.
+		///	</param>
+		/// <param name="completedSynchronously">
+		///		When operation is completed same thread as initiater then true.
+		/// </param>
+		public void HandleResponse( ResponseMessage response, bool completedSynchronously )
 		{
 			try { }
 			finally
 			{
 				this._response = response;
 				Thread.MemoryBarrier();
-				base.Complete( false );
+				base.Complete( completedSynchronously );
 			}
 		}
 
-		public void HandleError( RpcErrorMessage error )
+		/// <summary>
+		///		Complete this invocation as error.
+		/// </summary>
+		/// <param name="error">
+		///		Occurred RPC error.
+		///	</param>
+		/// <param name="completedSynchronously">
+		///		When operation is completed same thread as initiater then true.
+		/// </param>
+		public void HandleError( RpcErrorMessage error, bool completedSynchronously )
 		{
-			this.OnError( RpcException.FromRpcError( error ), false );
+			this.OnError( RpcException.FromRpcError( error ), completedSynchronously );
 		}
 
+		/// <summary>
+		///		Initialize new instance.
+		/// </summary>
+		/// <param name="owner">
+		///		Owner of asynchrnous invocation. This value will not be null.
+		/// </param>
+		/// <param name="messageId">ID of message.</param>
+		/// <param name="asyncCallback">
+		///		Callback of asynchrnous invocation which should be called in completion.
+		///		This value can be null.
+		/// </param>
+		/// <param name="asyncState">
+		///		State object of asynchrnous invocation which will be passed to <see cref="AsyncCallback"/>.
+		///		This value can be null.
+		/// </param>
+		/// <exception cref="ArgumentNullException">
+		///		<paramref name="owner"/> is null.
+		/// </exception>
 		public MessageAsyncResult( Object owner, int? messageId, AsyncCallback asyncCallback, object asyncState )
 			: base( owner, asyncCallback, asyncState )
 		{

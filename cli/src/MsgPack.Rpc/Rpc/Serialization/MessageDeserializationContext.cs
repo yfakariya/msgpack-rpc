@@ -28,10 +28,10 @@ using System.Globalization;
 
 namespace MsgPack.Rpc.Serialization
 {
+	// TODO: cleanup
 	public abstract class MessageDeserializationContext : SerializationErrorSink
 	{
 		private readonly RpcInputBuffer _buffer;
-
 		private int _processed;
 		private readonly int? _maxLength;
 

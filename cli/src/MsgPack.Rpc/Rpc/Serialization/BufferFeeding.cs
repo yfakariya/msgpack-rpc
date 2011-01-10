@@ -27,6 +27,7 @@ using System.Globalization;
 
 namespace MsgPack.Rpc.Serialization
 {
+	// TODO: refactor
 	/// <summary>
 	///		Represents buffer feeding result.
 	/// </summary>

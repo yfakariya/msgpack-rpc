@@ -27,16 +27,54 @@ namespace MsgPack.Rpc.Protocols
 	/// </summary>
 	public enum RpcTransportOperation
 	{
+		/// <summary>
+		///		Unknown.
+		/// </summary>
 		None = 0,
+
+		/// <summary>
+		///		Connect to remote endpoint.
+		/// </summary>
 		Connect,
-		Disconnect,
+
+		/// <summary>
+		///		Accept connection from remote endpoint.
+		/// </summary>
 		Accept,
+
+		/// <summary>
+		///		Send data to remote endpoint.
+		/// </summary>
 		Send,
+
+		/// <summary>
+		///		Receive data from remote endpoint.
+		/// </summary>
 		Receive,
+
+		/// <summary>
+		///		Serialize message.
+		/// </summary>
 		Serialize,
+
+		/// <summary>
+		///		Deserialize message.
+		/// </summary>
 		Deserialize,
+
+		/// <summary>
+		///		Bind socket to local port.
+		/// </summary>
 		Bind,
+
+		/// <summary>
+		///		Shutdown socket communication.
+		/// </summary>
 		Shutdown,
+
+		/// <summary>
+		///		Unknown operation.
+		/// </summary>
 		Unknown
 	}
 }

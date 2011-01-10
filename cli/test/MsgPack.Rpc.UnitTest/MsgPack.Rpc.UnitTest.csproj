@@ -49,7 +49,6 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="CollectionAssertEx.cs" />
-    <Compile Include="Collections\AdHocPseudoBufferPoolTest.cs" />
     <Compile Include="Collections\ArraySegmentExtensionsTest.cs" />
     <Compile Include="Collections\ArraySegmentsExtensionsTest.cs" />
     <Compile Include="Collections\ByteArraySegmentExtensionsTest.cs" />
@@ -58,10 +57,11 @@
     <Compile Include="Rpc\Serialization\RequestMessageSerializerTest.cs" />
     <Compile Include="Rpc\Serialization\ResponseMessageSerializerTest.cs" />
     <Compile Include="Rpc\Serialization\RpcInputBufferTest.cs" />
+    <Compile Include="Rpc\Serialization\RpcOutputBufferTest.cs" />
     <Compile Include="_SetUpFixture.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\..\..\msgpack\cs\src\MsgPack\MsgPack.csproj">
+    <ProjectReference Include="..\..\..\..\msgpack\cli\src\MsgPack\MsgPack.csproj">
       <Project>{5BCEC32E-990E-4DE5-945F-BD27326A7418}</Project>
       <Name>MsgPack</Name>
     </ProjectReference>

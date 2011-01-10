@@ -37,6 +37,12 @@ namespace MsgPack.Rpc
 
 		private readonly object _owner;
 
+		/// <summary>
+		///		Get owner of asynchrnous invocation.
+		/// </summary>
+		/// <value>
+		///		Owner of asynchrnous invocation. This value will not be null.
+		/// </value>
 		internal object Owner
 		{
 			get { return _owner; }
@@ -44,6 +50,13 @@ namespace MsgPack.Rpc
 
 		private readonly AsyncCallback _asyncCallback;
 
+		/// <summary>
+		///		Get callback of asynchrnous invocation which should be called in completion.
+		/// </summary>
+		/// <value>
+		///		Callback of asynchrnous invocation which should be called in completion.
+		///		This value could be null.
+		/// </value>
 		public AsyncCallback AsyncCallback
 		{
 			get { return this._asyncCallback; }
@@ -51,6 +64,13 @@ namespace MsgPack.Rpc
 
 		private readonly object _asyncState;
 
+		/// <summary>
+		///		Get state object of asynchrnous invocation which will be passed to <see cref="AsyncCallback"/>.
+		/// </summary>
+		/// <value>
+		///		State object of asynchrnous invocation which will be passed to <see cref="AsyncCallback"/>.
+		///		This value could be null.
+		/// </value>
 		public object AsyncState
 		{
 			get { return this._asyncState; }
@@ -58,6 +78,12 @@ namespace MsgPack.Rpc
 
 		private ManualResetEvent _asyncWaitHandle;
 
+		/// <summary>
+		///		Get <see cref="WaitHandle"/> to be used coordinate multiple asynchronous invocation.
+		/// </summary>
+		/// <value>
+		///		<see cref="WaitHandle"/> to be used coordinate multiple asynchronous invocation.
+		/// </value>
 		public WaitHandle AsyncWaitHandle
 		{
 			get { return LazyInitializer.EnsureInitialized( ref this._asyncWaitHandle, () => new ManualResetEvent( false ) ); }
@@ -71,23 +97,76 @@ namespace MsgPack.Rpc
 			get { return ( this._state & _completedSynchronously ) != 0; }
 		}
 
+		/// <summary>
+		///		Get value asynchronous invocation is completed.
+		/// </summary>
+		/// <value>
+		///		If asynchronous invocation is completed, that is, BeginInvoke is finished then true.
+		/// </value>
 		public bool IsCompleted
 		{
 			get { return ( this._state & _completed ) != 0; }
 		}
 
+		/// <summary>
+		///		Get value asynchronous invocation is finished.
+		/// </summary>
+		/// <value>
+		///		If asynchronous invocation is finished, that is, EncInvoke is finished then true.
+		/// </value>
 		public bool IsFinished
 		{
 			get { return ( this._state & _finished ) != 0; }
 		}
 
+		private Exception _error;
+
+		/// <summary>
+		///		Get error corresponds to this message.
+		/// </summary>
+		/// <value>
+		///		Error corresponds to this message.
+		/// </value>
+		public Exception Error
+		{
+			get { return this._error; }
+		}
+
+		/// <summary>
+		///		Initialize new instance.
+		/// </summary>
+		/// <param name="owner">
+		///		Owner of asynchrnous invocation. This value will not be null.
+		/// </param>
+		/// <param name="asyncCallback">
+		///		Callback of asynchrnous invocation which should be called in completion.
+		///		This value can be null.
+		/// </param>
+		/// <param name="asyncState">
+		///		State object of asynchrnous invocation which will be passed to <see cref="AsyncCallback"/>.
+		///		This value can be null.
+		/// </param>
+		/// <exception cref="ArgumentNullException">
+		///		<paramref name="owner"/> is null.
+		/// </exception>
 		protected AsyncResult( object owner, AsyncCallback asyncCallback, object asyncState )
 		{
+			if ( owner == null )
+			{
+				throw new ArgumentNullException( "owner" );
+			}
+
 			this._owner = owner;
 			this._asyncCallback = asyncCallback;
 			this._asyncState = asyncState;
 		}
 
+		/// <summary>
+		///		Record asynchronous invocation result and set completion.
+		/// </summary>
+		/// <param name="completedSynchronously">
+		///		When operation is completed same thread as initiater then true.
+		/// </param>
 		internal void Complete( bool completedSynchronously )
 		{
 			int state = _completed | ( completedSynchronously ? _completedSynchronously : 0 );
@@ -101,6 +180,28 @@ namespace MsgPack.Rpc
 			}
 		}
 
+		/// <summary>
+		///		Complete this invocation as error.
+		/// </summary>
+		/// <param name="error">
+		///		Occurred exception.
+		///	</param>
+		/// <param name="completedSynchronously">
+		///		When operation is completed same thread as initiater then true.
+		/// </param>
+		public void OnError( Exception error, bool completedSynchronously )
+		{
+			try { }
+			finally
+			{
+				Interlocked.Exchange( ref this._error, error );
+				this.Complete( completedSynchronously );
+			}
+		}
+
+		/// <summary>
+		///		Record all operation is finished.
+		/// </summary>
 		public void Finish()
 		{
 			Contract.Assert( this._state != _initialized );
@@ -111,8 +212,30 @@ namespace MsgPack.Rpc
 				oldValue = this._state;
 				newValue = oldValue | _finished;
 			}
+
+			if ( this._error != null )
+			{
+				throw this._error;
+			}
 		}
 
+		/// <summary>
+		///		Verify ownership and return typed instance.
+		/// </summary>
+		/// <typeparam name="TAsyncResult">Type of returning <paramref name="asyncResult"/>.</typeparam>
+		/// <param name="asyncResult"><see cref="IAsyncResult"/> passed to EndInvoke.</param>
+		/// <param name="owner">'this' reference of EndInvoke to be verified.</param>
+		/// <returns>Verified <paramref name="asyncResult"/>.</returns>
+		/// <exception cref="ArgumentNullException">
+		///		<paramref name="asyncResult"/> is null.
+		/// </exception>
+		/// <exception cref="ArgumentException">
+		///		<paramref name="asyncResult"/> is not <typeparamref name="TAsyncResult"/>.
+		/// </exception>
+		/// <exception cref="InvalidOperationException">
+		///		<paramref name="owner"/> is not same as <see cref="Owner"/>.
+		///		Or <see cref="IsFinished"/> is true.
+		/// </exception>
 		internal static TAsyncResult Verify<TAsyncResult>( IAsyncResult asyncResult, object owner )
 			where TAsyncResult : AsyncResult
 		{
@@ -140,7 +263,5 @@ namespace MsgPack.Rpc
 
 			return result;
 		}
-
-
 	}
 }

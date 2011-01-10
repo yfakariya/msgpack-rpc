@@ -30,23 +30,24 @@ namespace MsgPack.Rpc.Serialization
 	public abstract class SerializedMessageFilter<TContext>
 		where TContext : SerializationErrorSink
 	{
-		public IEnumerable<byte> Process( IEnumerable<byte> serializedMessage, TContext context )
+		/// <summary>
+		///		Process message after serialization or before deserialization.
+		/// </summary>
+		/// <param name="serializedMessage">Byte stream of serialized message.</param>
+		/// <param name="context">Context information of serialized message.</param>
+		internal IEnumerable<byte> Process( IEnumerable<byte> serializedMessage, TContext context )
 		{
-			if ( serializedMessage == null )
-			{
-				throw new ArgumentNullException( "serializedMessage" );
-			}
-
-			if ( context == null )
-			{
-				throw new ArgumentNullException( "context" );
-			}
-
-			Contract.EndContractBlock();
+			Contract.Assert( serializedMessage != null );
+			Contract.Assert( context != null );
 
 			return this.ProcessCore( serializedMessage, context );
 		}
 
+		/// <summary>
+		///		Process message after serialization or before deserialization.
+		/// </summary>
+		/// <param name="serializedMessage">Byte stream of serialized message.</param>
+		/// <param name="context">Context information of serialized message.</param>
 		protected abstract IEnumerable<byte> ProcessCore( IEnumerable<byte> serializedMessage, TContext context );
 	}
 }

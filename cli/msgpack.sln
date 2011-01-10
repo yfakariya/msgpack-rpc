@@ -5,9 +5,9 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{C2BB7B18-D69
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{4C41B4FB-3211-4047-9D9C-AB0F3454A690}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MsgPack", "..\..\msgpack\cs\src\MsgPack\MsgPack.csproj", "{5BCEC32E-990E-4DE5-945F-BD27326A7418}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MsgPack", "..\..\msgpack\cli\src\MsgPack\MsgPack.csproj", "{5BCEC32E-990E-4DE5-945F-BD27326A7418}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MsgPack.UnitTest", "..\..\msgpack\cs\test\MsgPack.UnitTest\MsgPack.UnitTest.csproj", "{3889C9BE-0473-4B41-80E8-C4C923E837E7}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MsgPack.UnitTest", "..\..\msgpack\cli\test\MsgPack.UnitTest\MsgPack.UnitTest.csproj", "{3889C9BE-0473-4B41-80E8-C4C923E837E7}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MsgPack.Rpc", "src\MsgPack.Rpc\MsgPack.Rpc.csproj", "{4109F01B-B25E-457F-BC09-24291526A1E8}"
 EndProject
@@ -23,6 +23,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "common", "common", "{60EC42
 		src\CommonAssemblyInfo.Pack.cs = src\CommonAssemblyInfo.Pack.cs
 		src\CommonAssemblyInfo.Rpc.cs = src\CommonAssemblyInfo.Rpc.cs
 	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MessagePack.Rpc.Client.UnitTest", "test\MessagePack.Rpc.Client.UnitTest\MessagePack.Rpc.Client.UnitTest.csproj", "{4BA3617F-BCB9-4672-AD25-BC7A0F5F61EA}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -67,6 +69,12 @@ Global
 		{773366FE-0653-48EA-A05E-F7B1672CCB5F}.Performance Test|Any CPU.Build.0 = Release|Any CPU
 		{773366FE-0653-48EA-A05E-F7B1672CCB5F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{773366FE-0653-48EA-A05E-F7B1672CCB5F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4BA3617F-BCB9-4672-AD25-BC7A0F5F61EA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4BA3617F-BCB9-4672-AD25-BC7A0F5F61EA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4BA3617F-BCB9-4672-AD25-BC7A0F5F61EA}.Performance Test|Any CPU.ActiveCfg = Release|Any CPU
+		{4BA3617F-BCB9-4672-AD25-BC7A0F5F61EA}.Performance Test|Any CPU.Build.0 = Release|Any CPU
+		{4BA3617F-BCB9-4672-AD25-BC7A0F5F61EA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4BA3617F-BCB9-4672-AD25-BC7A0F5F61EA}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -78,5 +86,6 @@ Global
 		{773366FE-0653-48EA-A05E-F7B1672CCB5F} = {C2BB7B18-D692-4C79-B5CA-23C41FF03AF4}
 		{3889C9BE-0473-4B41-80E8-C4C923E837E7} = {4C41B4FB-3211-4047-9D9C-AB0F3454A690}
 		{B7875E6C-8C2B-41B3-8DDD-1CA994005A3B} = {4C41B4FB-3211-4047-9D9C-AB0F3454A690}
+		{4BA3617F-BCB9-4672-AD25-BC7A0F5F61EA} = {4C41B4FB-3211-4047-9D9C-AB0F3454A690}
 	EndGlobalSection
 EndGlobal

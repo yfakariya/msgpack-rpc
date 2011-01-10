@@ -31,6 +31,12 @@ namespace MsgPack.Rpc.Serialization
 	{
 		private readonly bool _isVoid;
 
+		/// <summary>
+		///		Get the value whether invoked method is void.
+		/// </summary>
+		/// <value>
+		///		If invoked method is void then true.
+		/// </value>
 		public bool IsVoid
 		{
 			get { return this._isVoid; }
@@ -38,6 +44,13 @@ namespace MsgPack.Rpc.Serialization
 
 		private RpcException _exception;
 
+		/// <summary>
+		///		Get the exception thrown from the method.
+		/// </summary>
+		/// <value>
+		///		Exception thrown from the method.
+		///		If method was succeeded, this value is null.
+		/// </value>
 		public RpcException Exception
 		{
 			get { return _exception; }
@@ -45,18 +58,40 @@ namespace MsgPack.Rpc.Serialization
 
 		private object _returnValue;
 
+		/// <summary>
+		///		Get the return value from the method.
+		/// </summary>
+		/// <value>
+		///		Return value from the method.
+		///		If <see cref="IsVoid"/> is true or <see cref="Exception"/> is not null,
+		///		the value of this property is undefined.
+		/// </value>
 		public object ReturnValue
 		{
 			get { return this._returnValue; }
 		}
 
-		// for void.
+		/// <summary>
+		///		Initialize new instance for succeeded invocation of void method.
+		/// </summary>
+		/// <param name="buffer">Buffer to be written from serializer.</param>
 		internal ResponseMessageSerializationContext( RpcOutputBuffer buffer )
 			: this( buffer, null, null, true ) { }
 
+		/// <summary>
+		///		Initialize new instance for succeeded invocation of non-void method.
+		/// </summary>
+		/// <param name="buffer">Buffer to be written from serializer.</param>
+		/// <param name="returnValue">Return value returned from the method.</param>
 		internal ResponseMessageSerializationContext( RpcOutputBuffer buffer, object returnValue )
 			: this( buffer, returnValue, null, false ) { }
 
+		/// <summary>
+		///		Initialize new instance for succeeded invocation of non-void method.
+		/// </summary>
+		/// <param name="buffer">Buffer to be written from serializer.</param>
+		/// <param name="exception">Exception thrown from the method.</param>
+		/// <param name="isVoid">If invoked method is void then true.</param>
 		internal ResponseMessageSerializationContext( RpcOutputBuffer buffer, RpcException exception, bool isVoid )
 			: this( buffer, null, exception, isVoid )
 		{
@@ -76,7 +111,13 @@ namespace MsgPack.Rpc.Serialization
 			this._exception = exception;
 		}
 
-
+		/// <summary>
+		///		Swallow exception and reject original exception.
+		/// </summary>
+		/// <exception cref="InvalidOperationException">
+		///		<see cref="IsVoid"/> is false.
+		///		When swallow exception for non-void method, alternate return value must be specified.
+		/// </exception>
 		public void SwallowException()
 		{
 			if ( !this._isVoid )
@@ -89,6 +130,16 @@ namespace MsgPack.Rpc.Serialization
 			this._exception = null;
 		}
 
+		/// <summary>
+		///		Swallow exception and reject original exception.
+		/// </summary>
+		/// <param name="alternateReturnValue">
+		///		Alternate return value to be returned to client.
+		/// </param>
+		/// <exception cref="InvalidOperationException">
+		///		<see cref="IsVoid"/> is true.
+		///		When swallow exception for void method, use <see cref="SwallowException()"/> instead.
+		/// </exception>
 		public void SwallowException( object alternateReturnValue )
 		{
 			if ( this._isVoid )
@@ -102,6 +153,15 @@ namespace MsgPack.Rpc.Serialization
 			this._returnValue = alternateReturnValue;
 		}
 
+		/// <summary>
+		///		Throw specified exception in client, and reject original return value or exception.
+		/// </summary>
+		/// <param name="alternateException">
+		///		Alaternate exception to be thrown in client.
+		/// </param>
+		/// <exception cref="ArgumentNullException">
+		///		<paramref name="alternateException"/> is null.
+		/// </exception>
 		public void ThrowException( RpcException alternateException )
 		{
 			if ( alternateException == null )
@@ -115,6 +175,17 @@ namespace MsgPack.Rpc.Serialization
 			this._exception = alternateException;
 		}
 
+		/// <summary>
+		///		Throw specified exception in client, and reject original return value.
+		/// </summary>
+		/// <param name="alternateReturnValue">
+		///		Alaternate exception to be return to client.
+		/// </param>
+		/// <exception cref="InvalidOperationException">
+		///		<see cref="IsVoid"/> is true.
+		///		Or, <see cref="Exception"/> is not null.
+		///		To return value instead of Exception, use <see cref="SwallowException(Object)"/>.
+		/// </exception>
 		public void ChangeReturnValue( object alternateReturnValue )
 		{
 			if ( this._isVoid )

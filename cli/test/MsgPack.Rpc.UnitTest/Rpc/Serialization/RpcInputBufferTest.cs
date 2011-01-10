@@ -34,8 +34,7 @@ namespace MsgPack.Rpc.Serialization
 		[Test]
 		public void TestEnumerateSingleChunk()
 		{
-			var pool = new AdHocPseudoBufferPool( 2 );
-			using ( var buffer = pool.Borrow( 2 ) )
+			using ( var buffer = ChunkBuffer.CreateDefault() )
 			{
 				var expected = Enumerable.Range( 1, 2 ).Select( item => ( byte )item ).ToArray();
 				buffer.Fill( expected );
@@ -49,16 +48,15 @@ namespace MsgPack.Rpc.Serialization
 		[Test]
 		public void TestEnumerateSingleChunkWithFeeding()
 		{
-			var pool = new AdHocPseudoBufferPool( 4 );
 			bool feeded = false;
-			using ( var buffer = pool.Borrow( 4 ) )
+			using ( var buffer = ChunkBuffer.CreateDefault() )
 			{
 				buffer.Fill( Enumerable.Range( 1, 2 ).Select( item => ( byte )item ).ToArray() );
 				using ( var target =
 					new RpcInputBuffer(
 						buffer,
 						2,
-						oldBufer =>
+						_ =>
 						{
 							if ( feeded )
 							{
@@ -66,8 +64,6 @@ namespace MsgPack.Rpc.Serialization
 							}
 
 							feeded = true;
-							var reallocated = oldBufer.Reallocate( 2 );
-							Assert.AreSame( oldBufer, reallocated );
 							buffer.Fill( Enumerable.Range( 3, 4 ).Select( item => ( byte )item ).ToArray(), 2 );
 							return new BufferFeeding( 4 );
 						}
@@ -81,8 +77,7 @@ namespace MsgPack.Rpc.Serialization
 		[Test]
 		public void TestEnumerateMultipleChunk()
 		{
-			var pool = new AdHocPseudoBufferPool( 2 );
-			using ( var buffer = pool.Borrow( 6 ) )
+			using ( var buffer = ChunkBuffer.CreateDefault() )
 			{
 				var expected = Enumerable.Range( 1, 6 ).Select( item => ( byte )item ).ToArray();
 				buffer.Fill( expected );
@@ -96,16 +91,15 @@ namespace MsgPack.Rpc.Serialization
 		[Test]
 		public void TestEnumerateMultipleChunkWithFeeding()
 		{
-			var pool = new AdHocPseudoBufferPool( 2 );
 			bool feeded = false;
-			using ( var buffer = pool.Borrow( 6 ) )
+			using ( var buffer = ChunkBuffer.CreateDefault() )
 			{
 				buffer.Fill( Enumerable.Range( 1, 6 ).Select( item => ( byte )item ).ToArray() );
 				using ( var target =
 					new RpcInputBuffer(
 						buffer,
 						4,
-						oldBufer =>
+						_ =>
 						{
 							if ( feeded )
 							{
@@ -113,8 +107,6 @@ namespace MsgPack.Rpc.Serialization
 							}
 
 							feeded = true;
-							var reallocated = oldBufer.Reallocate( 2 );
-							Assert.AreSame( oldBufer, reallocated );
 							buffer.Fill( Enumerable.Range( 7, 2 ).Select( item => ( byte )item ).ToArray(), 6 );
 							return new BufferFeeding( 4 );
 						}
@@ -128,8 +120,7 @@ namespace MsgPack.Rpc.Serialization
 		[Test]
 		public void TestEnumerateMultipleChunkWithFeedingFailed()
 		{
-			var pool = new AdHocPseudoBufferPool( 2 );
-			using ( var buffer = pool.Borrow( 2 ) )
+			using ( var buffer = ChunkBuffer.CreateDefault() )
 			{
 				var expected = Enumerable.Range( 1, 2 ).Select( item => ( byte )item ).ToArray();
 				buffer.Fill( expected );

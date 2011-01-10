@@ -32,8 +32,8 @@ namespace MsgPack.Rpc
 	[Serializable]
 	public sealed class UnexpcetedRpcException : RpcException
 	{
-		private static readonly string _errorFieldKey = typeof( UnexpcetedRpcException ).FullName + ".Error";
-		private static readonly string _errorDetailFieldKey = typeof( UnexpcetedRpcException ).FullName + ".ErrorDetail";
+		private const string _errorFieldKey = "UnexpectedError";
+		private const string _errorDetailFieldKey = "UnexpectedErrorDetail";
 
 		private readonly MessagePackObject _error;
 

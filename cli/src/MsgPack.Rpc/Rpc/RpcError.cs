@@ -19,14 +19,14 @@
 #endregion -- License Terms --
 
 using System;
-using System.Diagnostics.Contracts;
-using System.Runtime.Serialization;
-using MsgPack.Rpc.Protocols;
 using System.Collections.Generic;
+using System.Diagnostics.Contracts;
 using System.Reflection;
+using MsgPack.Rpc.Protocols;
 
 namespace MsgPack.Rpc
 {
+	// FIXME: Refactor when server finished.
 	/// <summary>
 	///		Represents pre-defined MsgPack-RPC error metadata.
 	/// </summary>
@@ -46,8 +46,7 @@ namespace MsgPack.Rpc
 				-60,
 				"Request has been timeout.",
 				typeof( RpcTimeoutException ),
-				( rpcError, message, debugInformation ) => new RpcTimeoutException( rpcError, message, debugInformation ),
-				( info, context ) => new RpcTimeoutException( info, context )
+				( error, data ) => new RpcTimeoutException( data )
 			);
 
 		/// <summary>
@@ -60,8 +59,7 @@ namespace MsgPack.Rpc
 				-50,
 				"Cannot initiate transferring message.",
 				typeof( RpcTransportException ),
-				( rpcError, message, debugInformation ) => new RpcTransportException( rpcError, message, debugInformation ),
-				( info, context ) => new RpcTransportException( info, context )
+				( error, data ) => new RpcTransportException( error, data )
 			);
 
 		/// <summary>
@@ -74,8 +72,7 @@ namespace MsgPack.Rpc
 				-51,
 				"Cannot reach specified remote end point.",
 				typeof( RpcTransportException ),
-				( rpcError, message, debugInformation ) => new RpcTransportException( rpcError, message, debugInformation ),
-				( info, context ) => new RpcTransportException( info, context )
+				( error, data ) => new RpcTransportException( error, data )
 			);
 
 		/// <summary>
@@ -89,8 +86,7 @@ namespace MsgPack.Rpc
 				-52,
 				"Connection was refused explicitly by remote end point.",
 				typeof( RpcTransportException ),
-				( rpcError, message, debugInformation ) => new RpcTransportException( rpcError, message, debugInformation ),
-				( info, context ) => new RpcTransportException( info, context )
+				( error, data ) => new RpcTransportException( error, data )
 			);
 
 		/// <summary>
@@ -104,8 +100,7 @@ namespace MsgPack.Rpc
 				-53,
 				"Connection timout was occurred.",
 				typeof( RpcTransportException ),
-				( rpcError, message, debugInformation ) => new RpcTransportException( rpcError, message, debugInformation ),
-				( info, context ) => new RpcTransportException( info, context )
+				( error, data ) => new RpcTransportException( error, data )
 			);
 
 		/// <summary>
@@ -143,9 +138,8 @@ namespace MsgPack.Rpc
 				"RPCError.ClientError.MessageRefusedError",
 				-40,
 				"Message was refused explicitly by remote end point.",
-				typeof( RpcTransportException ),
-				( rpcError, message, debugInformation ) => new RpcProtocolException( rpcError, message, debugInformation ),
-				( info, context ) => new RpcProtocolException( info, context )
+				typeof( RpcProtocolException ),
+				( error, data ) => new RpcProtocolException( error, data )
 			);
 
 		/// <summary>
@@ -175,8 +169,7 @@ namespace MsgPack.Rpc
 				"RPCError.ClientError.MessageRefusedError.MessageTooLargeError",
 				-41, "Message is too large.",
 				typeof( RpcMessageTooLongException ),
-				( rpcError, message, debugInformation ) => new RpcMessageTooLongException( rpcError, message, debugInformation ),
-				( info, context ) => new RpcMessageTooLongException( info, context )
+				( error, data ) => new RpcMessageTooLongException( data )
 			);
 
 		/// <summary>
@@ -189,8 +182,7 @@ namespace MsgPack.Rpc
 				-20,
 				"Failed to call specified method.",
 				typeof( RpcMethodInvocationException ),
-				( rpcError, message, debugInformation ) => new RpcException( rpcError, message, debugInformation ),
-				( info, context ) => new RpcMethodInvocationException( info, context )
+				( error, data ) => new RpcMethodInvocationException( error, data )
 			);
 
 		/// <summary>
@@ -202,8 +194,7 @@ namespace MsgPack.Rpc
 				-21,
 				"Specified method was not found.",
 				typeof( RpcMissingMethodException ),
-				( rpcError, message, debugInformation ) => new RpcException( rpcError, message, debugInformation ),
-				( info, context ) => new RpcMissingMethodException( info, context )
+				( error, data ) => new RpcMissingMethodException( data )
 			);
 
 		/// <summary>
@@ -215,8 +206,7 @@ namespace MsgPack.Rpc
 				-22,
 				"Some argument(s) were wrong.",
 				typeof( RpcArgumentException ),
-				( rpcError, message, debugInformation ) => new RpcException( rpcError, message, debugInformation ),
-				( info, context ) => new RpcArgumentException( info, context )
+				( error, data ) => new RpcArgumentException( data )
 			);
 
 		/// <summary>
@@ -229,8 +219,7 @@ namespace MsgPack.Rpc
 				-30,
 				"Server cannot process received message.",
 				typeof( RpcServerUnavailableException ),
-				( rpcError, message, debugInformation ) => new RpcServerUnavailableException( rpcError, message, debugInformation ),
-				( info, context ) => new RpcServerUnavailableException( info, context )
+				( error, data ) => new RpcServerUnavailableException( error, data )
 			);
 
 		/// <summary>
@@ -243,8 +232,7 @@ namespace MsgPack.Rpc
 				-31,
 				"Server is busy.",
 				typeof( RpcServerUnavailableException ),
-				( rpcError, message, debugInformation ) => new RpcServerUnavailableException( rpcError, message, debugInformation ),
-				( info, context ) => new RpcServerUnavailableException( info, context )
+				( error, data ) => new RpcServerUnavailableException( error, data )
 			);
 
 		/// <summary>
@@ -256,11 +244,22 @@ namespace MsgPack.Rpc
 				-10,
 				"Remote end point failed to process request.",
 				typeof( RpcException ),
-				( rpcError, message, debugInformation ) => new RpcException( rpcError, message, debugInformation ),
-				( info, context ) => new RpcException( info, context )
+				( error, data ) => new RpcException( error, data )
 			);
 
 		#endregion -- Built-in Errors --
+
+		private const string _unexpectedErrorIdentifier = "RPCError.RemoteError.UnexpectedError";
+		private const int _unexpectedErrorCode = Int32.MaxValue;
+
+		internal static readonly RpcError Unexpected =
+			new RpcError(
+				_unexpectedErrorIdentifier,
+				_unexpectedErrorCode,
+				"Unexpected RPC error is occurred.",
+				typeof( UnexpcetedRpcException ),
+				null
+			);
 
 		private static readonly Dictionary<string, RpcError> _identifierDictionary = new Dictionary<string, RpcError>();
 		private static readonly Dictionary<int, RpcError> _errorCodeDictionary = new Dictionary<int, RpcError>();
@@ -284,6 +283,12 @@ namespace MsgPack.Rpc
 
 		private readonly string _identifier;
 
+		/// <summary>
+		///		Get iedntifier of this error.
+		/// </summary>
+		/// <value>
+		///		Iedntifier of this error.
+		/// </value>
 		public string Identifier
 		{
 			get { return this._identifier; }
@@ -291,6 +296,12 @@ namespace MsgPack.Rpc
 
 		private readonly int _errorCode;
 
+		/// <summary>
+		///		Get error code of this error.
+		/// </summary>
+		/// <value>
+		///		Error code of this error.
+		/// </value>
 		public int ErrorCode
 		{
 			get { return this._errorCode; }
@@ -298,11 +309,29 @@ namespace MsgPack.Rpc
 
 		private readonly string _defaultMessageInvariant;
 
+		/// <summary>
+		///		Get default message in invariant culture.
+		/// </summary>
+		/// <value>
+		///		Default message in invariant culture.
+		/// </value>
+		/// <remarks>
+		///		You can use this property to build custom exception.
+		/// </remarks>
 		public string DefaultMessageInvariant
 		{
 			get { return _defaultMessageInvariant; }
 		}
 
+		/// <summary>
+		///		Get default message in current UI culture.
+		/// </summary>
+		/// <value>
+		///		Default message in current UI culture.
+		/// </value>
+		/// <remarks>
+		///		You can use this property to build custom exception.
+		/// </remarks>
 		public string DefaultMessage
 		{
 			get
@@ -313,24 +342,54 @@ namespace MsgPack.Rpc
 		}
 
 		private readonly Type _exceptionType;
-		private readonly Func<SerializationInfo, StreamingContext, RpcException> _exceptionDeserializer;
-		private readonly Func<RpcError, string, string, RpcException> _exceptionFactory;
+		private readonly Func<RpcError, MessagePackObject, RpcException> _exceptionUnmarshaler;
 
-		internal RpcException ToException( RpcError rpcError, string message, string debugInformation )
-		{
-			return this._exceptionFactory( rpcError, message, debugInformation );
-		}
-
-		private RpcError( string identifier, int errorCode, string defaultMessageInvariant, Type exceptionType, Func<RpcError, string, string, RpcException> exceptionFactory, Func<SerializationInfo, StreamingContext, RpcException> exceptionDeserializer )
+		private RpcError( string identifier, int errorCode, string defaultMessageInvariant, Type exceptionType, Func<RpcError, MessagePackObject, RpcException> exceptionUnmarshaler )
 		{
 			this._identifier = identifier;
 			this._errorCode = errorCode;
 			this._defaultMessageInvariant = defaultMessageInvariant;
 			this._exceptionType = exceptionType;
-			this._exceptionFactory = exceptionFactory;
-			this._exceptionDeserializer = exceptionDeserializer;
+			this._exceptionUnmarshaler = exceptionUnmarshaler;
 		}
 
+		/// <summary>
+		///		Create <see cref="RpcException"/> which corresponds to this error with specified detailed information.
+		/// </summary>
+		/// <param name="detail">
+		///		Detailed error information.
+		/// </param>
+		/// <returns>
+		///		<see cref="RpcException"/> which corresponds to this error with specified detailed information.
+		/// </returns>
+		internal RpcException ToException( MessagePackObject detail )
+		{
+			Contract.Assume( this._exceptionUnmarshaler != null );
+
+			return this._exceptionUnmarshaler( this, detail );
+		}
+
+		/// <summary>
+		///		Create custom error with specified identifier and error code.
+		/// </summary>
+		/// <param name="identifier">
+		///		Identifier of custom error. This should be "RPCError.&lt;ApplicationName&gt;.&lt;ErrorType&gt;[.&lt;ErrorSubType&gt;]."
+		/// </param>
+		/// <param name="errorCode">
+		///		Error code of custom error. This must be positive or zero.
+		/// </param>
+		/// <returns>
+		///		Custom <see cref="RpcError"/> with specified <paramref name="identifier"/> and <paramref name="errorCode"/>.
+		/// </returns>
+		/// <exception cref="ArgumentNullException">
+		///		<paramref name="identifier"/> is null.
+		/// </exception>
+		/// <exception cref="ArgumentException">
+		///		<paramref name="identifier"/> is empty or blank.
+		/// </exception>
+		/// <exception cref="ArgumentOutOfRangeException">
+		///		<paramref name="errorCode"/> is negative.
+		/// </exception>
 		public static RpcError CustomError( string identifier, int errorCode )
 		{
 			if ( identifier == null )
@@ -356,25 +415,22 @@ namespace MsgPack.Rpc
 					errorCode,
 					"Application throw exception.",
 					typeof( RpcFaultException ),
-					( rpcError, message, debugInformation ) => new RpcFaultException( rpcError, message, debugInformation ),
-					( info, context ) => new RpcFaultException( info, context )
+					( error, data  ) => new RpcFaultException( error, data )
 				);
 		}
 
-		private const string _unexpectedErrorIdentifier = "RPCError.RemoteError.UnexpectedError";
-		private const int _unexpectedErrorCode = Int32.MaxValue;
-
-#warning Factories should be deleted.
-		internal static readonly RpcError Unexpected =
-			new RpcError(
-				_unexpectedErrorIdentifier,
-				_unexpectedErrorCode,
-				"Unexpected RPC error is occurred.",
-				typeof( UnexpcetedRpcException ),
-				null,
-				null
-			);
-
+		/// <summary>
+		///		Get built-in error with specified identifier and error code, or create custom error when specified identifier and error code is not built-in error.
+		/// </summary>
+		/// <param name="identifier">
+		///		Identifier of error.
+		/// </param>
+		/// <param name="errorCode">
+		///		Error code of error.
+		/// </param>
+		/// <returns>
+		///		Built-in or custom <see cref="RpcError"/> corresponds to <paramref name="identifier"/> or <paramref name="errorCode"/>.
+		/// </returns>
 		public static RpcError FromIdentifier( string identifier, int? errorCode )
 		{
 			RpcError result;

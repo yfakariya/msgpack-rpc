@@ -19,9 +19,6 @@
 #endregion -- License Terms --
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Diagnostics.Contracts;
 
 namespace MsgPack.Rpc
@@ -33,6 +30,12 @@ namespace MsgPack.Rpc
 	{
 		private IAsyncResult _underlying;
 
+		/// <summary>
+		///		Get wrapped underlying <see cref="IAsyncResult"/>.
+		/// </summary>
+		/// <value>
+		///		Wrapped underlying <see cref="IAsyncResult"/>.
+		/// </value>
 		public IAsyncResult Underlying
 		{
 			get { return this._underlying; }
@@ -43,9 +46,24 @@ namespace MsgPack.Rpc
 			}
 		}
 
+		/// <summary>
+		///		Initialize new instance.
+		/// </summary>
+		/// <param name="owner">
+		///		Owner of asynchrnous invocation. This value will not be null.
+		/// </param>
+		/// <param name="asyncCallback">
+		///		Callback of asynchrnous invocation which should be called in completion.
+		///		This value can be null.
+		/// </param>
+		/// <param name="asyncState">
+		///		State object of asynchrnous invocation which will be passed to <see cref="AsyncCallback"/>.
+		///		This value can be null.
+		/// </param>
+		/// <exception cref="ArgumentNullException">
+		///		<paramref name="owner"/> is null.
+		/// </exception>
 		public WrapperAsyncResult( Object owner, AsyncCallback asyncCallback, object asyncState )
-			: base( owner, asyncCallback, asyncState )
-		{
-		}
+			: base( owner, asyncCallback, asyncState ) { }
 	}
 }

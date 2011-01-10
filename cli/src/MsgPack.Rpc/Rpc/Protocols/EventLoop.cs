@@ -30,10 +30,13 @@ namespace MsgPack.Rpc.Protocols
 	/// <remarks>
 	///		This class is thread safe, and derived classes should be thread safe.
 	/// </remarks>
-	public abstract class EventLoop
+	public abstract class EventLoop : IDisposable
 	{
 		private EventHandler<RpcTransportErrorEventArgs> _transportError;
 
+		/// <summary>
+		///		Raised when some transport error is occurred.
+		/// </summary>
 		public event EventHandler<RpcTransportErrorEventArgs> TransportError
 		{
 			add
@@ -62,6 +65,19 @@ namespace MsgPack.Rpc.Protocols
 			}
 		}
 
+		/// <summary>
+		///		Raise <see cref="TransportError"/> event.
+		/// </summary>
+		/// <param name="e">Event information.</param>
+		/// <returns>
+		///		If error may be handled event handler(s) then true, otherwise false.
+		/// </returns>
+		/// <exception cref="ArgumentNullException">
+		///		<paramref name="e"/> is null.
+		/// </exception>
+		/// <remarks>
+		///		Caller should cause unhandled exception when this method returns false to prevent unexpected behavior of the program.
+		/// </remarks>
 		protected virtual bool OnTransportError( RpcTransportErrorEventArgs e )
 		{
 			if ( e == null )
@@ -80,6 +96,12 @@ namespace MsgPack.Rpc.Protocols
 			return false;
 		}
 
+		/// <summary>
+		///		Initialize new instance.
+		/// </summary>
+		/// <param name="errorHandler">
+		///		Initial event handler of <see cref="TransportError"/>. This handler may be null.
+		/// </param>
 		protected EventLoop( EventHandler<RpcTransportErrorEventArgs> errorHandler )
 		{
 			if ( errorHandler != null )
@@ -88,6 +110,31 @@ namespace MsgPack.Rpc.Protocols
 			}
 		}
 
+		/// <summary>
+		///		Cleanup internal resources.
+		/// </summary>
+		public void Dispose()
+		{
+			this.Dispose( true );
+			GC.SuppressFinalize( this );
+		}
+
+		/// <summary>
+		///		Cleanup unamanged resources and optionally managed resources.
+		/// </summary>
+		/// <param name="disposing">
+		///		To cleanup managed resources too, then true.
+		/// </param>
+		protected virtual void Dispose( bool disposing ) { }
+
+		/// <summary>
+		///		Raise error handler for specified socket level error.
+		/// </summary>
+		/// <param name="operation">Last operation.</param>
+		/// <param name="error">Socket error.</param>
+		/// <exception cref="SocketException">
+		///		There are no event handlers registered.
+		/// </exception>
 		public void HandleError( SocketAsyncOperation operation, SocketError error )
 		{
 			if ( error == System.Net.Sockets.SocketError.Success )
@@ -101,6 +148,36 @@ namespace MsgPack.Rpc.Protocols
 			}
 		}
 
+		/// <summary>
+		///		Raise error handler for specified socket level error.
+		/// </summary>
+		/// <param name="operation">Last operation.</param>
+		/// <param name="messageId">ID of message.</param>
+		/// <param name="error">Socket error.</param>
+		/// <exception cref="SocketException">
+		///		There are no event handlers registered.
+		/// </exception>
+		public void HandleError( SocketAsyncOperation operation, int messageId, SocketError error )
+		{
+			if ( error == System.Net.Sockets.SocketError.Success )
+			{
+				return;
+			}
+
+			if ( !this.OnTransportError( new RpcTransportErrorEventArgs( operation, messageId, error ) ) )
+			{
+				throw new SocketException( ( int )error );
+			}
+		}
+
+		/// <summary>
+		///		Raise error handler for specified RPC level error.
+		/// </summary>
+		/// <param name="operation">Last operation.</param>
+		/// <param name="rpcError">RPC error.</param>
+		/// <exception cref="RpcException">
+		///		There are no event handlers registered.
+		/// </exception>
 		public void HandleError( RpcTransportOperation operation, RpcErrorMessage rpcError )
 		{
 			if ( rpcError.IsSuccess )
@@ -110,10 +187,19 @@ namespace MsgPack.Rpc.Protocols
 
 			if ( !this.OnTransportError( new RpcTransportErrorEventArgs( operation, rpcError ) ) )
 			{
-				throw new RpcException( rpcError.Error, rpcError.Description, rpcError.DebugInformation );
+				throw rpcError.ToException();
 			}
 		}
 
+		/// <summary>
+		///		Raise error handler for specified RPC level error.
+		/// </summary>
+		/// <param name="operation">Last operation.</param>
+		/// <param name="messageId">ID of message.</param>
+		/// <param name="rpcError">RPC error.</param>
+		/// <exception cref="RpcException">
+		///		There are no event handlers registered.
+		/// </exception>
 		public void HandleError( RpcTransportOperation operation, int messageId, RpcErrorMessage rpcError )
 		{
 			if ( rpcError.IsSuccess )
@@ -123,9 +209,8 @@ namespace MsgPack.Rpc.Protocols
 
 			if ( !this.OnTransportError( new RpcTransportErrorEventArgs( operation, messageId, rpcError ) ) )
 			{
-				throw new RpcException( rpcError.Error, rpcError.Description, rpcError.DebugInformation );
+				throw rpcError.ToException();
 			}
 		}
 	}
-
 }

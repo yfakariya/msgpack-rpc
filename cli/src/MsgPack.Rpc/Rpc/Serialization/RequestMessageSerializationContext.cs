@@ -25,6 +25,7 @@ using MsgPack.Collections;
 
 namespace MsgPack.Rpc.Serialization
 {
+	// TODO: cleanup
 	/// <summary>
 	///		Stores context information of request or notification message serialization.
 	/// </summary>
@@ -35,7 +36,7 @@ namespace MsgPack.Rpc.Serialization
 		public string MethodName
 		{
 			get { return this._methodName; }
-			set
+			internal set
 			{
 				if ( value == null )
 				{

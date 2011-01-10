@@ -29,6 +29,10 @@ namespace MsgPack.Rpc.Serialization
 	/// </summary>
 	public abstract class RequestMessageDeserializationFilter
 	{
+		/// <summary>
+		///		Process request message before deserialization.
+		/// </summary>
+		/// <param name="context">Context information of deserializing message.</param>
 		internal void Process( RequestMessageDeserializationContext context )
 		{
 			Contract.Assert( context != null );
@@ -36,6 +40,10 @@ namespace MsgPack.Rpc.Serialization
 			this.ProcessCore( context );
 		}
 
-		protected abstract void ProcessCore(  RequestMessageDeserializationContext context );
+		/// <summary>
+		///		Process request message before deserialization.
+		/// </summary>
+		/// <param name="context">Context information of deserializing message.</param>
+		protected abstract void ProcessCore( RequestMessageDeserializationContext context );
 	}
 }

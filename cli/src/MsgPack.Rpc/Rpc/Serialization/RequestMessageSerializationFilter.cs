@@ -28,12 +28,21 @@ namespace MsgPack.Rpc.Serialization
 	/// </summary>
 	public abstract class RequestMessageSerializationFilter
 	{
+		/// <summary>
+		///		Process request message before serialization.
+		/// </summary>
+		/// <param name="context">Context information of serializing message.</param>
 		internal void Process( RequestMessageSerializationContext context )
 		{
 			Contract.Assert( context != null );
+			
 			this.ProcessCore( context );
 		}
 
+		/// <summary>
+		///		Process request message before serialization.
+		/// </summary>
+		/// <param name="context">Context information of serializing message.</param>
 		protected abstract void ProcessCore( RequestMessageSerializationContext context );
 	}
 }

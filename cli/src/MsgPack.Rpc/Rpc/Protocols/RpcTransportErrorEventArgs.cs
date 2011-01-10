@@ -31,6 +31,13 @@ namespace MsgPack.Rpc.Protocols
 	{
 		private readonly int? _messageId;
 
+		/// <summary>
+		///		Get message ID of transporting message.
+		/// </summary>
+		/// <value>
+		///		Message ID of transporting message.
+		///		If message ID is unknown or message is notification message, this value is null.
+		/// </value>
 		public int? MessageId
 		{
 			get { return this._messageId; }
@@ -38,6 +45,12 @@ namespace MsgPack.Rpc.Protocols
 
 		private readonly RpcTransportOperation _operation;
 
+		/// <summary>
+		///		Get operation type which caused this error.
+		/// </summary>
+		/// <value>
+		///		Operation type which caused this error.
+		/// </value>
 		public RpcTransportOperation Operation
 		{
 			get { return this._operation; }
@@ -45,6 +58,12 @@ namespace MsgPack.Rpc.Protocols
 
 		private readonly SocketError? _socketErrorCode;
 
+		/// <summary>
+		///		Get underlying socket error.
+		/// </summary>
+		/// <value>
+		///		Underlying socket error of this error.
+		/// </value>
 		public SocketError? SocketErrorCode
 		{
 			get { return _socketErrorCode; }
@@ -52,14 +71,38 @@ namespace MsgPack.Rpc.Protocols
 
 		private readonly RpcErrorMessage? _rpcError;
 
+		/// <summary>
+		///		Get RPC error message.
+		/// </summary>
+		/// <value>
+		///		RPC error of this error.
+		/// </value>
 		public RpcErrorMessage? RpcError
 		{
 			get { return this._rpcError; }
 		}
 
+		/// <summary>
+		///		Initialize new instance which represents socket level error.
+		/// </summary>
+		/// <param name="operation">Last operation.</param>
+		/// <param name="socketErrorCode">Error code.</param>
 		public RpcTransportErrorEventArgs( SocketAsyncOperation operation, SocketError socketErrorCode )
 		{
 			this._operation = ToRpcTransportOperation( operation );
+			this._socketErrorCode = socketErrorCode;
+		}
+
+		/// <summary>
+		///		Initialize new instance which represents socket level error.
+		/// </summary>
+		/// <param name="operation">Last operation.</param>
+		/// <param name="messageId">ID of message.</param>
+		/// <param name="socketErrorCode">Error code.</param>
+		public RpcTransportErrorEventArgs( SocketAsyncOperation operation, int messageId, SocketError socketErrorCode )
+		{
+			this._operation = ToRpcTransportOperation( operation );
+			this._messageId = messageId;
 			this._socketErrorCode = socketErrorCode;
 		}
 
@@ -73,11 +116,7 @@ namespace MsgPack.Rpc.Protocols
 				}
 				case SocketAsyncOperation.Connect:
 				{
-					return RpcTransportOperation.Bind;
-				}
-				case SocketAsyncOperation.Disconnect:
-				{
-					return RpcTransportOperation.Disconnect;
+					return RpcTransportOperation.Connect;
 				}
 				case SocketAsyncOperation.Receive:
 				case SocketAsyncOperation.ReceiveFrom:
@@ -91,12 +130,6 @@ namespace MsgPack.Rpc.Protocols
 				{
 					return RpcTransportOperation.Send;
 				}
-				case SocketAsyncOperation.None:
-				{
-					// Should not pass None.
-					Debug.Fail( "SocketAsyncOperation.None" );
-					return RpcTransportOperation.None;
-				}
 				default:
 				{
 					Debug.WriteLine( "Unepcted SocketAsyncOperation:" + operation );
@@ -105,12 +138,23 @@ namespace MsgPack.Rpc.Protocols
 			}
 		}
 
+		/// <summary>
+		///		Initialize new instance which represents RPC level error.
+		/// </summary>
+		/// <param name="operation">Last operation.</param>
+		/// <param name="rpcError">Error.</param>
 		public RpcTransportErrorEventArgs( RpcTransportOperation operation, RpcErrorMessage rpcError )
 		{
 			this._operation = operation;
 			this._rpcError = rpcError;
 		}
 
+		/// <summary>
+		///		Initialize new instance which represents RPC level error.
+		/// </summary>
+		/// <param name="operation">Last operation.</param>
+		/// <param name="messageId">ID of message.</param>
+		/// <param name="rpcError">Error.</param>
 		public RpcTransportErrorEventArgs( RpcTransportOperation operation, int messageId, RpcErrorMessage rpcError )
 		{
 			this._operation = operation;
