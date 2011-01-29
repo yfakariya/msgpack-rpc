@@ -76,7 +76,8 @@ namespace MsgPack.Rpc
 		/// </value>
 		public static ClientEventLoopFactory EventLoopFactory
 		{
-			get { return CanUseIOCompletionPort ? ( ClientEventLoopFactory )new IOCompletionPortClientEventLoopFactory() : new PollingClientEventLoopFactory(); }
+			//get { return CanUseIOCompletionPort ? ( ClientEventLoopFactory )new IOCompletionPortClientEventLoopFactory() : new PollingClientEventLoopFactory(); }
+			get { return new IOCompletionPortClientEventLoopFactory(); }
 		}
 		
 		private static int _isFrozen;

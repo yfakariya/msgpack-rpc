@@ -30,7 +30,9 @@ namespace MsgPack.Rpc
 	/// <summary>
 	///		Represents pre-defined MsgPack-RPC error metadata.
 	/// </summary>
-	/// <seealso cref="https://gist.github.com/470667/d33136f74584381bdb58b6444abfcb4a8bbe8abc"/>
+	/// <remarks>
+	///		See https://gist.github.com/470667/d33136f74584381bdb58b6444abfcb4a8bbe8abc for details.
+	/// </remarks>
 	public sealed class RpcError
 	{
 		#region -- Built-in Errors --

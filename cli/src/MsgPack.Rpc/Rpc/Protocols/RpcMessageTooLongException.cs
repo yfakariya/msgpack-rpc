@@ -77,9 +77,6 @@ namespace MsgPack.Rpc.Protocols
 		/// <summary>
 		///		Initialize new sintance with unpacked data.
 		/// </summary>
-		/// <param name="rpcError">
-		///		Metadata of error. If you specify null, <see cref="RpcError.RemoteRuntimeError"/> is used.
-		///	</param>
 		/// <param name="unpackedException">
 		///		Exception data from remote MessagePack-RPC server.
 		///	</param>

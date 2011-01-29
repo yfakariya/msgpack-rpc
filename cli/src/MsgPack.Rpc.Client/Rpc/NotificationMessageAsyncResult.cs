@@ -24,12 +24,50 @@ using System.Linq;
 using System.Text;
 using System.Diagnostics.Contracts;
 using MsgPack.Rpc.Protocols;
+using System.Threading;
 
 namespace MsgPack.Rpc
 {
-	internal sealed class NotificationMessageAsyncResult : MessageAsyncResult
+	internal sealed class NotificationMessageAsyncResult : MessageAsyncResult, IResponseHandler
 	{
-		public void OnMessageSent( SendingClientSocketAsyncEventArgs e, Exception error, bool completedSynchronously )
+
+		private ResponseMessage? _response;
+
+		/// <summary>
+		///		Complete this invocation as success.
+		/// </summary>
+		/// <param name="response">
+		///		Replied response.
+		///	</param>
+		/// <param name="completedSynchronously">
+		///		When operation is completed same thread as initiater then true.
+		/// </param>
+		public void HandleResponse( ResponseMessage response, bool completedSynchronously )
+		{
+			try { }
+			finally
+			{
+				this._response = response;
+				Thread.MemoryBarrier();
+				base.Complete( completedSynchronously );
+			}
+		}
+
+		/// <summary>
+		///		Complete this invocation as error.
+		/// </summary>
+		/// <param name="error">
+		///		Occurred RPC error.
+		///	</param>
+		/// <param name="completedSynchronously">
+		///		When operation is completed same thread as initiater then true.
+		/// </param>
+		public void HandleError( RpcErrorMessage error, bool completedSynchronously )
+		{
+			this.OnError( RpcException.FromRpcError( error ), completedSynchronously );
+		}
+
+		public void OnMessageSent( SendingContext e, Exception error, bool completedSynchronously )
 		{
 			Contract.Assume( e != null );
 			Contract.Assume( e.MessageId == null );
@@ -62,7 +100,7 @@ namespace MsgPack.Rpc
 		/// <exception cref="ArgumentNullException">
 		///		<paramref name="owner"/> is null.
 		/// </exception>
-		public NotificationMessageAsyncResult( Object owner, int? messageId, AsyncCallback asyncCallback, object asyncState )
-			: base( owner, messageId, asyncCallback, asyncState ) { }
+		public NotificationMessageAsyncResult( Object owner, AsyncCallback asyncCallback, object asyncState )
+			: base( owner, null, asyncCallback, asyncState ) { }
 	}
 }

@@ -35,6 +35,7 @@ namespace MsgPack.Rpc.Protocols
 	/// </summary>
 	public abstract class ClientTransport : IDisposable
 	{
+		private const int _defaultChunkSize = 32 * 1024;
 		private readonly RequestMessageSerializer _requestSerializer;
 		private readonly ResponseMessageSerializer _responseSerializer;
 
@@ -45,34 +46,38 @@ namespace MsgPack.Rpc.Protocols
 			get { return this._eventLoop; }
 		}
 
-		private readonly ReceivingClientSocketAsyncEventArgs _receivingContext;
+		private readonly int _chunkSize;
 
-		public ReceivingClientSocketAsyncEventArgs ReceivingContext
+		public int ChunkSize
 		{
-			get { return this._receivingContext; }
+			get { return this._chunkSize; }
 		}
 
-		private readonly RpcSocket _socket;
+		//private ClientSessionContext _sessionContext;
 
-		public RpcSocket Socket
-		{
-			get { return this._socket; }
-		}
+		//public ClientSessionContext SessionContext
+		//{
+		//    get { return this._sessionContext; }
+		//    protected set
+		//    {
+		//        if ( value == null )
+		//        {
+		//            throw new ArgumentNullException( "value" );
+		//        }
 
-		private readonly CountdownEvent _sessionTableLatch = new CountdownEvent( 0 );
+		//        this._sessionContext = value;
+		//    }
+		//}
+
+		private readonly CountdownEvent _sessionTableLatch = new CountdownEvent( 1 );
 		private readonly TimeSpan _drainTimeout;
 
 		private readonly ConcurrentDictionary<int, IResponseHandler> _sessionTable = new ConcurrentDictionary<int, IResponseHandler>();
 
 		private bool _disposed;
 
-		protected ClientTransport( RpcSocket socket, ClientEventLoop eventLoop, RpcClientOptions options )
+		protected ClientTransport( RpcTransportProtocol protocol, ClientEventLoop eventLoop, RpcClientOptions options )
 		{
-			if ( socket == null )
-			{
-				throw new ArgumentNullException( "socket" );
-			}
-
 			if ( eventLoop == null )
 			{
 				throw new ArgumentNullException( "eventLoop" );
@@ -80,12 +85,11 @@ namespace MsgPack.Rpc.Protocols
 
 			Contract.EndContractBlock();
 
-			this._socket = socket;
 			this._eventLoop = eventLoop;
-			this._requestSerializer = ClientServices.RequestSerializerFactory.Create( socket.Protocol, options );
-			this._responseSerializer = ClientServices.ResponseDeserializerFactory.Create( socket.Protocol, options );
-			this._receivingContext = eventLoop.CreateReceivingContext( this );
+			this._requestSerializer = ClientServices.RequestSerializerFactory.Create( protocol, options );
+			this._responseSerializer = ClientServices.ResponseDeserializerFactory.Create( protocol, options );
 			this._drainTimeout = options == null ? TimeSpan.FromSeconds( 3 ) : options.DrainTimeout ?? TimeSpan.FromSeconds( 3 );
+			this._chunkSize = options == null ? _defaultChunkSize : options.ChunkSize ?? _defaultChunkSize;
 		}
 
 		public void Dispose()
@@ -96,20 +100,22 @@ namespace MsgPack.Rpc.Protocols
 
 		protected virtual void Dispose( bool disposing )
 		{
+			this.Drain();
 			this._disposed = true;
 		}
 
 		protected void Drain()
 		{
+			this._sessionTableLatch.Signal();
 			this._sessionTableLatch.Wait( this._drainTimeout, this.EventLoop.CancellationToken );
 		}
 
-		public virtual SendingClientSocketAsyncEventArgs CreateNewSendingContext( int? messageId, Action<SendingClientSocketAsyncEventArgs, Exception, bool> onMessageSent )
-		{
-			return this._eventLoop.CreateSendingContext( this, messageId, onMessageSent );
-		}
+		//public virtual SendingContext CreateNewSendingContext( int? messageId, Action<SendingContext, Exception, bool> onMessageSent )
+		//{
+		//    return this._eventLoop.CreateSendingContext( this, messageId, onMessageSent );
+		//}
 
-		public void Send( MessageType type, int? messageId, String method, IList<object> arguments, SendingClientSocketAsyncEventArgs sendingContext, IResponseHandler responseHandler )
+		public void Send( MessageType type, int? messageId, String method, IList<object> arguments, Action<SendingContext, Exception, bool> onMessageSent, IResponseHandler responseHandler )
 		{
 			switch ( type )
 			{
@@ -139,18 +145,14 @@ namespace MsgPack.Rpc.Protocols
 				throw new ArgumentNullException( "arguments" );
 			}
 
-			if ( sendingContext == null )
-			{
-				throw new ArgumentNullException( "sendingContext" );
-			}
-
 			if ( this._disposed )
 			{
-				throw new ObjectDisposedException( this.GetType().Name + ":" + this._socket.RemoteEndPoint + "(" + this._socket.Protocol + ")" );
+				throw new ObjectDisposedException( this.ToString() );
 			}
 
 			Contract.EndContractBlock();
 
+			var sendingContext = this.CreateNewSendingContext( messageId, onMessageSent );
 			RpcErrorMessage serializationError = this._requestSerializer.Serialize( messageId, method, arguments, sendingContext.SendingBuffer );
 			if ( !serializationError.IsSuccess )
 			{
@@ -172,17 +174,21 @@ namespace MsgPack.Rpc.Protocols
 				}
 			}
 
+			// Must set BufferList here.
+			sendingContext.SocketContext.BufferList = sendingContext.SendingBuffer.Chunks;
 			this.SendCore( sendingContext );
 		}
 
-		protected abstract void SendCore( SendingClientSocketAsyncEventArgs context );
+		protected abstract SendingContext CreateNewSendingContext( int? messageId, Action<SendingContext, Exception, bool> onMessageSent );
+
+		protected abstract void SendCore( SendingContext context );
 
 		/// <summary>
 		/// 
 		/// </summary>
 		/// <param name="context"></param>
 		/// <returns>If success to derialize from buffer then true. If buffer does not have enough data to deserialize then false.</returns>
-		public void Receive( ReceivingClientSocketAsyncEventArgs context )
+		public void Receive( ReceivingContext context )
 		{
 			if ( context == null )
 			{
@@ -193,10 +199,10 @@ namespace MsgPack.Rpc.Protocols
 
 			ResponseMessage result;
 			var error = this._responseSerializer.Deserialize( context.ReceivingBuffer, out result );
-			this.OnResponse( result, error );
+			this.OnReceive( context, result, error );
 		}
 
-		private void OnResponse( ResponseMessage response, RpcErrorMessage error )
+		protected virtual void OnReceive( ReceivingContext context, ResponseMessage response, RpcErrorMessage error )
 		{
 			IResponseHandler handler;
 			bool removed;
@@ -217,6 +223,10 @@ namespace MsgPack.Rpc.Protocols
 				{
 					handler.HandleError( error, false );
 				}
+			}
+			else
+			{
+				// TODO: trace unrecognized receive message.
 			}
 		}
 	}

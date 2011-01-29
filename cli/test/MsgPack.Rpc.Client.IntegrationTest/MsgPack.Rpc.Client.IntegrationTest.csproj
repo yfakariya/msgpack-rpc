@@ -5,11 +5,11 @@
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProductVersion>8.0.30703</ProductVersion>
     <SchemaVersion>2.0</SchemaVersion>
-    <ProjectGuid>{4BA3617F-BCB9-4672-AD25-BC7A0F5F61EA}</ProjectGuid>
+    <ProjectGuid>{A556635C-B01F-47D9-B1BA-4B352308FCDD}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>MessagePack.Rpc.Client.UnitTest</RootNamespace>
-    <AssemblyName>MessagePack.Rpc.Client.UnitTest</AssemblyName>
+    <RootNamespace>MsgPack</RootNamespace>
+    <AssemblyName>MsgPack.Rpc.Client.IntegrationTest</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
   </PropertyGroup>
@@ -31,6 +31,12 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="nunit.core">
+      <HintPath>..\..\..\..\..\..\git.old\msgpack-rpc\cs\lib\nunit.core.dll</HintPath>
+    </Reference>
+    <Reference Include="nunit.framework">
+      <HintPath>..\..\..\..\..\..\git.old\msgpack-rpc\cs\lib\nunit.framework.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Xml.Linq" />
@@ -41,6 +47,26 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Rpc\Client\ThroughTest.cs" />
+    <Compile Include="_SetUpFixture.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\..\msgpack\cli\src\MsgPack\MsgPack.csproj">
+      <Project>{5BCEC32E-990E-4DE5-945F-BD27326A7418}</Project>
+      <Name>MsgPack</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\src\MsgPack.Rpc.Client\MsgPack.Rpc.Client.csproj">
+      <Project>{BF4A9ECF-60C8-4D37-8220-8FB568485B39}</Project>
+      <Name>MsgPack.Rpc.Client</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\src\MsgPack.Rpc\MsgPack.Rpc.csproj">
+      <Project>{4109F01B-B25E-457F-BC09-24291526A1E8}</Project>
+      <Name>MsgPack.Rpc</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\MsgPack.Rpc.TestUtilities\MsgPack.Rpc.TestUtilities.csproj">
+      <Project>{B4544C9C-1E96-453F-8A30-BDAAF05E4A62}</Project>
+      <Name>MsgPack.Rpc.TestUtilities</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

@@ -19,16 +19,14 @@
 #endregion -- License Terms --
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using MsgPack.Collections;
 using System.Diagnostics.Contracts;
-using System.Globalization;
 
 namespace MsgPack.Rpc.Serialization
 {
 	// TODO: cleanup
+	/// <summary>
+	///		Contains context information of message serialization.
+	/// </summary>
 	public abstract class MessageSerializationContext : SerializationErrorSink
 	{
 		private RpcOutputBuffer _buffer;
@@ -37,6 +35,15 @@ namespace MsgPack.Rpc.Serialization
 			get { return this._buffer; }
 		}
 
+		/// <summary>
+		///		Initialize new instance.
+		/// </summary>
+		/// <param name="buffer">
+		///		Buffer to store outbound data.
+		/// </param>
+		/// <exception cref="ArgumentNullException">
+		///		<paramref name="buffer"/> is null.
+		/// </exception>
 		protected MessageSerializationContext( RpcOutputBuffer buffer )
 		{
 			if ( buffer == null )

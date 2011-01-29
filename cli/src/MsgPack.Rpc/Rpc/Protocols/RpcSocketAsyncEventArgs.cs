@@ -28,15 +28,15 @@ namespace MsgPack.Rpc.Protocols
 	/// <summary>
 	///		Wraps <see cref="SocketAsyncEventArgs"/> for RPC.
 	/// </summary>
-	public abstract class RpcSocketAsyncEventArgs : SocketAsyncEventArgs
+	public sealed class RpcSocketAsyncEventArgs : SocketAsyncEventArgs, IDisposable
 	{
 		private readonly Func<Socket, RpcSocket> _socketFactory;
-		private readonly Action<RpcSocketAsyncEventArgs> _onConnected;
-		private readonly Action<RpcSocketAsyncEventArgs> _onAcceptted;
-		private readonly Action<RpcSocketAsyncEventArgs> _onSent;
-		private readonly Action<RpcSocketAsyncEventArgs> _onReceived;
+		private readonly Action<RpcSocketAsyncEventArgs, bool> _onConnected;
+		private readonly Action<RpcSocketAsyncEventArgs, bool> _onAcceptted;
+		private readonly Action<RpcSocketAsyncEventArgs, bool> _onSent;
+		private readonly Action<RpcSocketAsyncEventArgs, bool> _onReceived;
 		private readonly Action<SocketAsyncOperation, SocketError> _onError;
-
+		
 		private RpcSocket _acceptSocket;
 
 		/// <summary>
@@ -49,17 +49,21 @@ namespace MsgPack.Rpc.Protocols
 		{
 			get
 			{
-				if ( base.AcceptSocket == null )
-				{
-					return null;
-				}
-
 				if ( this._acceptSocket == null )
 				{
+					if ( base.AcceptSocket == null )
+					{
+						return null;
+					}
+
 					this._acceptSocket = this._socketFactory( base.AcceptSocket );
 				}
 
 				return this._acceptSocket;
+			}
+			internal set
+			{
+				this._acceptSocket = value;
 			}
 		}
 
@@ -88,24 +92,22 @@ namespace MsgPack.Rpc.Protocols
 		{
 			get
 			{
-				if ( base.ConnectSocket == null )
-				{
-					return null;
-				}
-
 				if ( this._connectSocket == null )
 				{
+					if ( base.ConnectSocket == null )
+					{
+						return null;
+					}
+
 					this._connectSocket = this._socketFactory( base.ConnectSocket );
 				}
 
 				return this._connectSocket;
 			}
-		}
-
-		internal object InternalUserToken
-		{
-			get;
-			set;
+			internal set
+			{
+				this._connectSocket = value;
+			}
 		}
 
 		/// <summary>
@@ -135,11 +137,11 @@ namespace MsgPack.Rpc.Protocols
 		/// <exception cref="ArgumentNullException">
 		///		<paramref name="socketFactory"/> is null.
 		/// </exception>
-		protected RpcSocketAsyncEventArgs(
-			Action<RpcSocketAsyncEventArgs> onConnected,
-			Action<RpcSocketAsyncEventArgs> onAcceptted,
-			Action<RpcSocketAsyncEventArgs> onSent,
-			Action<RpcSocketAsyncEventArgs> onReceived,
+		public RpcSocketAsyncEventArgs(
+			Action<RpcSocketAsyncEventArgs, bool> onConnected,
+			Action<RpcSocketAsyncEventArgs, bool> onAcceptted,
+			Action<RpcSocketAsyncEventArgs, bool> onSent,
+			Action<RpcSocketAsyncEventArgs, bool> onReceived,
 			Action<SocketAsyncOperation, SocketError> onError,
 			CancellationToken cancellationToken,
 			Func<Socket, RpcSocket> socketFactory
@@ -160,7 +162,11 @@ namespace MsgPack.Rpc.Protocols
 			this._cancellationToken = cancellationToken;
 			this._socketFactory = socketFactory;
 		}
-		
+
+		/// <summary>
+		///		Raise appropriate event.
+		/// </summary>
+		/// <param name="e">Event informartion.</param>
 		protected sealed override void OnCompleted( SocketAsyncEventArgs e )
 		{
 			if ( e.SocketError != System.Net.Sockets.SocketError.Success )
@@ -182,7 +188,7 @@ namespace MsgPack.Rpc.Protocols
 					var handler = this._onAcceptted;
 					if ( handler != null )
 					{
-						handler( this );
+						handler( this, false );
 					}
 
 					return;
@@ -192,7 +198,7 @@ namespace MsgPack.Rpc.Protocols
 					var handler = this._onConnected;
 					if ( handler != null )
 					{
-						handler( this );
+						handler( this, false );
 					}
 
 					return;
@@ -203,7 +209,7 @@ namespace MsgPack.Rpc.Protocols
 					var handler = this._onSent;
 					if ( handler != null )
 					{
-						handler( this );
+						handler( this, false );
 					}
 
 					return;
@@ -214,7 +220,7 @@ namespace MsgPack.Rpc.Protocols
 					var handler = this._onReceived;
 					if ( handler != null )
 					{
-						handler( this );
+						handler( this, false );
 					}
 
 					return;
@@ -227,9 +233,9 @@ namespace MsgPack.Rpc.Protocols
 		/// <summary>
 		///		Invoke sending callback to client.
 		/// </summary>
-		public void OnSent()
+		public void OnSent( bool completedSynchronously )
 		{
-			this._onSent( this );
+			this._onSent( this, completedSynchronously );
 		}
 
 		/// <summary>
@@ -259,9 +265,9 @@ namespace MsgPack.Rpc.Protocols
 		/// <summary>
 		///		Invoke receiving callback to client.
 		/// </summary>
-		public void OnReceived()
+		public void OnReceived( bool completedSynchrnously )
 		{
-			this._onReceived( this );
+			this._onReceived( this, completedSynchrnously );
 		}
 
 		/// <summary>

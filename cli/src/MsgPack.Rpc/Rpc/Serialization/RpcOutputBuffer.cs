@@ -34,7 +34,7 @@ namespace MsgPack.Rpc.Serialization
 	///		It is not thread safe that:
 	///		<list type="bullet">
 	///			<item>Disposing this instance concurrently.</item>
-	///			<item>Use multiple stream returned from <see cref="OpenStream"/> concurrently.</item>
+	///			<item>Use multiple stream returned from <see cref="OpenWriteStream"/> concurrently.</item>
 	///		</list>
 	/// </remarks>
 	public sealed class RpcOutputBuffer : IDisposable
@@ -45,16 +45,20 @@ namespace MsgPack.Rpc.Serialization
 		private readonly ChunkBuffer _chunks;
 		private IEnumerable<byte> _swapped;
 
-		internal IList<ArraySegment<byte>> Chunks
+		internal ChunkBuffer Chunks
 		{
 			get { return this._chunks; }
 		}
 
-		internal RpcOutputBuffer()
+		internal RpcOutputBuffer( ChunkBuffer chunkBuffer )
 		{
-			this._chunks = ChunkBuffer.CreateDefault();
+			Contract.Assume( chunkBuffer != null );
+			this._chunks = chunkBuffer;
 		}
 
+		/// <summary>
+		///		Cleanup internal resources.
+		/// </summary>
 		public void Dispose()
 		{
 			if ( this._chunks != null )
@@ -63,7 +67,13 @@ namespace MsgPack.Rpc.Serialization
 			}
 		}
 
-		public IEnumerable<byte> ReadBytes()
+		/// <summary>
+		///		Read all bytes from this buffer.
+		/// </summary>
+		/// <returns>
+		///		Bytes in this buffer.
+		///	</returns>
+		public IEnumerable<byte> ReadBytes() // TODO: It should be OpenReadStream?
 		{
 			if ( this._swapped != null )
 			{
@@ -75,7 +85,13 @@ namespace MsgPack.Rpc.Serialization
 			}
 		}
 
-		public Stream OpenStream()
+		/// <summary>
+		///		Get write only <see cref="Stream"/> to write contents to this buffer.
+		/// </summary>
+		/// <returns>
+		///		Write only <see cref="Stream"/> to write contents to this buffer.
+		/// </returns>
+		public Stream OpenWriteStream()
 		{
 			return new ZeroCopyingRpcOutputBufferStream( this._chunks );
 		}
@@ -187,7 +203,7 @@ namespace MsgPack.Rpc.Serialization
 			{
 				this._chunks = chunks;
 			}
-			
+
 			protected sealed override void WriteCore( byte[] buffer, int offset, int count )
 			{
 				this._chunks.Feed( new ArraySegment<byte>( buffer, offset, count ) );

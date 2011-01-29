@@ -27,7 +27,7 @@ namespace MsgPack.Rpc
 	/// <summary>
 	///		Common <see cref="IAsyncResult"/> implementation for MsgPack-RPC async invocation.
 	/// </summary>
-	internal class MessageAsyncResult : AsyncResult, IAsyncSessionErrorSink, IResponseHandler
+	internal class MessageAsyncResult : AsyncResult
 	{
 		private readonly int? _messageId;
 
@@ -38,42 +38,6 @@ namespace MsgPack.Rpc
 		public int? MessageId
 		{
 			get { return this._messageId; }
-		}
-
-		private ResponseMessage? _response;
-
-		/// <summary>
-		///		Complete this invocation as success.
-		/// </summary>
-		/// <param name="response">
-		///		Replied response.
-		///	</param>
-		/// <param name="completedSynchronously">
-		///		When operation is completed same thread as initiater then true.
-		/// </param>
-		public void HandleResponse( ResponseMessage response, bool completedSynchronously )
-		{
-			try { }
-			finally
-			{
-				this._response = response;
-				Thread.MemoryBarrier();
-				base.Complete( completedSynchronously );
-			}
-		}
-
-		/// <summary>
-		///		Complete this invocation as error.
-		/// </summary>
-		/// <param name="error">
-		///		Occurred RPC error.
-		///	</param>
-		/// <param name="completedSynchronously">
-		///		When operation is completed same thread as initiater then true.
-		/// </param>
-		public void HandleError( RpcErrorMessage error, bool completedSynchronously )
-		{
-			this.OnError( RpcException.FromRpcError( error ), completedSynchronously );
 		}
 
 		/// <summary>

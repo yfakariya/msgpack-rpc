@@ -54,6 +54,7 @@
     <Compile Include="Collections\ByteArraySegmentExtensionsTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Collections\Concurrent\NotifiableBlockingCollection`1Test.cs" />
+    <Compile Include="Rpc\Protocols\RpcSocketMock.cs" />
     <Compile Include="Rpc\Serialization\RequestMessageSerializerTest.cs" />
     <Compile Include="Rpc\Serialization\ResponseMessageSerializerTest.cs" />
     <Compile Include="Rpc\Serialization\RpcInputBufferTest.cs" />

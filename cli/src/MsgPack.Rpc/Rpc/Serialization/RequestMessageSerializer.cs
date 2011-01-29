@@ -41,6 +41,24 @@ namespace MsgPack.Rpc.Serialization
 		private readonly IList<IFilterProvider<RequestMessageDeserializationFilter>> _postDeserializationFilters;
 		private readonly int? _maxRequestLength;
 
+		/// <summary>
+		///		Initialize new instance.
+		/// </summary>
+		/// <param name="preSerializationFilters">
+		///		Filters to process unserialized value before serialization. This value can be null.
+		/// </param>
+		/// <param name="postSerializationFilters">
+		///		Filters to process serialized binary stream after serialization. This value can be null.
+		/// </param>
+		/// <param name="preDeserializationFilters">
+		///		Filters to process undeserialized binary stream before deserialization. This value can be null.
+		/// </param>
+		/// <param name="postDeserializationFilters">
+		///		Filters to process deserialized value after deserialization. This value can be null.
+		/// </param>
+		/// <param name="maxRequestLength">
+		///		Quota value for incoming binary length. This value can be null.
+		/// </param>
 		public RequestMessageSerializer(
 			IList<IFilterProvider<RequestMessageSerializationFilter>> preSerializationFilters,
 			IList<IFilterProvider<SerializedMessageFilter<MessageSerializationContext>>> postSerializationFilters,
@@ -131,7 +149,7 @@ namespace MsgPack.Rpc.Serialization
 
 		private static void SerializeCore( RpcOutputBuffer buffer, int? messageId, RequestMessageSerializationContext context )
 		{
-			using ( var stream = buffer.OpenStream() )
+			using ( var stream = buffer.OpenWriteStream() )
 			using ( var packer = Packer.Create( stream ) )
 			{
 				packer.PackArrayHeader( messageId == null ? 3 : 4 );

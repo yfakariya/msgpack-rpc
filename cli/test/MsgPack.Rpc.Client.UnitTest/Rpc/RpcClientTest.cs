@@ -19,19 +19,13 @@
 #endregion -- License Terms --
 
 using System;
-using System.Threading;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
 
-namespace MsgPack.Rpc.Protocols
+namespace MsgPack.Rpc
 {
-	// TODO: Move to "examples".
-	/// <summary>
-	///		<see cref="ClientEventLoopFactory"/> for <see cref="PollingClientEventLoop"/>.
-	/// </summary>
-	public sealed class PollingClientEventLoopFactory : ClientEventLoopFactory
+	class RpcClientTest
 	{
-		protected sealed override ClientEventLoop CreateCore( RpcClientOptions options, EventHandler<RpcTransportErrorEventArgs> errorHandler, CancellationTokenSource cancellationTokenSource )
-		{
-			return new PollingClientEventLoop( options, errorHandler, cancellationTokenSource );
-		}
 	}
 }

@@ -71,7 +71,7 @@ namespace MsgPack.Rpc
 		///			And then, user-friendly, safe message should be specified to <paramref name="message"/> like 'Internal Error."
 		///		</para>
 		///		<para>
-		///			MessagePack-RPC for CLI runtime does not propagate <see cref="DebugInformation"/> for remote endpoint.
+		///			MessagePack-RPC for CLI runtime does not propagate <see cref="RpcException.DebugInformation"/> for remote endpoint.
 		///			So you should specify some error handler to instrument it (e.g. logging handler).
 		///		</para>
 		/// </remarks>
@@ -107,7 +107,7 @@ namespace MsgPack.Rpc
 		///			And then, user-friendly, safe message should be specified to <paramref name="message"/> like 'Internal Error."
 		///		</para>
 		///		<para>
-		///			MessagePack-RPC for CLI runtime does not propagate <see cref="DebugInformation"/> for remote endpoint.
+		///			MessagePack-RPC for CLI runtime does not propagate <see cref="RpcException.DebugInformation"/> for remote endpoint.
 		///			So you should specify some error handler to instrument it (e.g. logging handler).
 		///		</para>
 		/// </remarks>

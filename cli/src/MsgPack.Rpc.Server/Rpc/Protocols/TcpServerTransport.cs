@@ -21,6 +21,7 @@
 using System;
 using System.Diagnostics.Contracts;
 using MsgPack.Rpc.Serialization;
+using MsgPack.Collections;
 
 namespace MsgPack.Rpc.Protocols
 {
@@ -83,8 +84,9 @@ namespace MsgPack.Rpc.Protocols
 		protected sealed override void OnReceivedCore( RpcServerSession session )
 		{
 			// Deserialize
-			RpcErrorMessage error;
-			var request = this._requestSerializer.Deserialize( session.Context.ReadReceivingBuffer(), out error );
+			RequestMessage request;
+#warning TODO: specify appropriate buffer.
+			var error = this._requestSerializer.Deserialize( null, out request );
 			if ( !error.IsSuccess )
 			{
 				this._eventLoop.HandleError( RpcTransportOperation.Deserialize, error );
@@ -103,15 +105,16 @@ namespace MsgPack.Rpc.Protocols
 				rpcException = new RpcException( RpcError.CallError, "Remote method throws exception.", exception.ToString() );
 			}
 
-			RpcErrorMessage error;
-			var response = this._responseSerializer.Serialize( messageId, returnValue, isVoid, rpcException, this.InitialBufferLength, out error );
+			// FIXME: Buffer strategy
+			RpcOutputBuffer buffer = new RpcOutputBuffer( ChunkBuffer.CreateDefault() );
+			var error = this._responseSerializer.Serialize( messageId, returnValue, isVoid, rpcException, buffer );
 			if ( !error.IsSuccess )
 			{
 				this._eventLoop.HandleError( RpcTransportOperation.Serialize, messageId, error );
 				return;
 			}
 
-			this._eventLoop.SendAsync( session.Context, response );
+			this._eventLoop.SendAsync( session.Context, buffer.ReadBytes() );
 		}
 	}
 }

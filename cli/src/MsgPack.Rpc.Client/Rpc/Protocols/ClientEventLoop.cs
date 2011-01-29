@@ -23,6 +23,8 @@ using System.Diagnostics.Contracts;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
+using MsgPack.Rpc.Serialization;
+using MsgPack.Collections;
 
 namespace MsgPack.Rpc.Protocols
 {
@@ -107,162 +109,41 @@ namespace MsgPack.Rpc.Protocols
 
 		#region -- Context Factory --
 
-		/// <summary>
-		///		Create new <see cref="ConnectingClientSocketAsyncEventArgs"/>.
-		/// </summary>
-		/// <param name="transport">
-		///		<see cref="ConnectionOrientedClientTransport"/> which is responsible for this session.
-		///	</param>
-		/// <param name="remoteEndPoint">
-		///		<see cref="EndPoint"/> to be connected.
-		///	</param>
-		/// <returns>
-		///		New <see cref="ConnectingClientSocketAsyncEventArgs"/>.
-		///	</returns>
-		///	<exception cref="ArgumentNullException">
-		///		<paramref name="transport"/> or <paramref name="remoteEndPoint"/> is null.
-		///	</exception>
-		///	<exception cref="ObjectDisposedException">
-		///		This instance has been disposed.
-		///	</exception>
-		public ConnectingClientSocketAsyncEventArgs CreateConnectingContext( ConnectionOrientedClientTransport transport, EndPoint remoteEndPoint )
+		public RpcSocketAsyncEventArgs CreateSocketContext( EndPoint remoteEndPoint )
 		{
-			if ( transport == null )
-			{
-				throw new ArgumentNullException( "transport" );
-			}
-
-			if ( remoteEndPoint == null )
-			{
-				throw new ArgumentNullException( "remoteEndPoint" );
-			}
-
-			this.VerifyIsNotDisposed();
-
-			Contract.EndContractBlock();
-
 			return
-				new ConnectingClientSocketAsyncEventArgs(
-					transport,
-					this._options,
-					e => BridgeTo<ConnectingClientSocketAsyncEventArgs>( e, this.OnConnected ),
-					e => BridgeTo<SendingClientSocketAsyncEventArgs>( e, this.OnSent ),
-					e => BridgeTo<ReceivingClientSocketAsyncEventArgs>( e, this.OnReceived ),
+				new RpcSocketAsyncEventArgs(
+					( e, completedSynchronously ) => BridgeTo<ConnectingContext>( e, completedSynchronously, this.OnConnected ),
+					null,
+					( e, completedSynchronously ) => BridgeTo<SendingContext>( e, completedSynchronously, this.OnSent ),
+					( e, completedSynchronously ) => BridgeTo<ReceivingContext>( e, completedSynchronously, this.OnReceived ),
 					this.HandleError,
 					this.CancellationToken,
 					ClientServices.SocketFactory
 				) { RemoteEndPoint = remoteEndPoint };
 		}
-
-		/// <summary>
-		///		Create new <see cref="SendingClientSocketAsyncEventArgs"/>.
-		/// </summary>
-		/// <param name="transport">
-		///		<see cref="ClientTransport"/> which is responsible for this session.
-		///	</param>
-		///	<param name="messageId">
-		///		Message ID of the session. If message is notification message, specify null.
-		///	</param>
-		///	<param name="onMessageSent">
-		///		Callback will be called when message is sent anyway. 
-		///		1st parameter is returning <see cref="SendingClientSocketAsyncEventArgs"/> itself,
-		///		2nd parameter is occurred <see cref="Exception"/> when failed to sent,
-		///		and 3rd parameter indicates operation is completed synchronously or not.
-		///	</param>
-		/// <returns>
-		///		New <see cref="SendingClientSocketAsyncEventArgs"/>.
-		///	</returns>
-		///	<exception cref="ArgumentNullException">
-		///		<paramref name="transport"/> is null.
-		///	</exception>
-		///	<exception cref="ObjectDisposedException">
-		///		This instance has been disposed.
-		///	</exception>
-		public SendingClientSocketAsyncEventArgs CreateSendingContext( ClientTransport transport, int? messageId, Action<SendingClientSocketAsyncEventArgs, Exception, bool> onMessageSent )
-		{
-			if ( transport == null )
-			{
-				throw new ArgumentNullException( "transport" );
-			}
-
-			this.VerifyIsNotDisposed();
-
-			Contract.EndContractBlock();
-
-			return
-				new SendingClientSocketAsyncEventArgs(
-					transport,
-					messageId,
-					this._options,
-					e => BridgeTo<ConnectingClientSocketAsyncEventArgs>( e, this.OnConnected ),
-					e => BridgeTo<SendingClientSocketAsyncEventArgs>( e, this.OnSent ),
-					e => BridgeTo<ReceivingClientSocketAsyncEventArgs>( e, this.OnReceived ),
-					onMessageSent,
-					this.HandleError,
-					this.CancellationToken,
-					ClientServices.SocketFactory
-				);
-		}
-
-		/// <summary>
-		///		Create new <see cref="ReceivingClientSocketAsyncEventArgs"/>.
-		/// </summary>
-		/// <param name="transport">
-		///		<see cref="ClientTransport"/> which is responsible for all sessions.
-		///	</param>
-		/// <returns>
-		///		New <see cref="ReceivingClientSocketAsyncEventArgs"/>.
-		///	</returns>
-		///	<exception cref="ArgumentNullException">
-		///		<paramref name="transport"/> is null.
-		///	</exception>
-		///	<exception cref="ObjectDisposedException">
-		///		This instance has been disposed.
-		///	</exception>
-		public ReceivingClientSocketAsyncEventArgs CreateReceivingContext( ClientTransport transport )
-		{
-			if ( transport == null )
-			{
-				throw new ArgumentNullException( "transport" );
-			}
-
-			this.VerifyIsNotDisposed();
-
-			Contract.EndContractBlock();
-
-			return
-				new ReceivingClientSocketAsyncEventArgs(
-					transport,
-					this._options,
-					e => BridgeTo<ConnectingClientSocketAsyncEventArgs>( e, this.OnConnected ),
-					e => BridgeTo<SendingClientSocketAsyncEventArgs>( e, this.OnSent ),
-					e => BridgeTo<ReceivingClientSocketAsyncEventArgs>( e, this.OnReceived ),
-					this.HandleError,
-					this.CancellationToken,
-					ClientServices.SocketFactory,
-					this.FeedMore
-				);
-		}
-
+		
 		/// <summary>
 		///		Bridge callback of <see cref="RpcSocketAsyncEventArgs"/> to method of this class.
 		/// </summary>
 		/// <typeparam name="T">Expected concrete type of <see cref="RpcSocketAsyncEventArgs"/>.</typeparam>
 		/// <param name="e">Argument of callback.</param>
 		/// <param name="handler">Handler of this class.</param>
-		private static void BridgeTo<T>( RpcSocketAsyncEventArgs e, Action<T, bool> handler )
-			where T : RpcSocketAsyncEventArgs
+		private static void BridgeTo<T>( RpcSocketAsyncEventArgs e, bool completedSynchronously, Action<T, bool> handler )
 		{
-			Contract.Assume( e != null );
-			var context = e as T;
+			Contract.Assume( e != null, "e != null, handler:" + handler.Method );
+			Contract.Assume( e.UserToken != null, "e.UserToken(<" + typeof( T ).FullName + "> is null. handler:" + handler.Method );
+			Contract.Assume( e.UserToken is T, "e.UserToken is " + typeof( T ) + ", Actual:" + e.UserToken.GetType().FullName + " handler:" + handler.Method );
+			var context = ( T )e.UserToken;
 			Contract.Assume( context != null );
-			handler( context, false );
+			e.UserToken = null;
+			handler( context, completedSynchronously );
 		}
 
 		#endregion -- Context Factory --
 
 		#region -- Connect --
-		
+
 		/// <summary>
 		///		Initiate asynchrnous connecting operation.
 		/// </summary>
@@ -279,7 +160,7 @@ namespace MsgPack.Rpc.Protocols
 		///		When to complete connecting operation, 
 		///		<see cref="ConnectionOrientedClientTransport.OnConnected"/> will be called via context to notify consumers on upper layers.
 		/// </remarks>
-		protected internal void Connect( ConnectingClientSocketAsyncEventArgs context, object asyncState )
+		protected internal void Connect( ConnectingContext context )
 		{
 			if ( context == null )
 			{
@@ -290,8 +171,7 @@ namespace MsgPack.Rpc.Protocols
 
 			Contract.EndContractBlock();
 
-			context.InternalUserToken = asyncState;
-
+			context.Client.SocketContext.UserToken = context;
 			this.ConnectCore( context );
 		}
 
@@ -301,7 +181,7 @@ namespace MsgPack.Rpc.Protocols
 		/// <param name="context">
 		///		Context information.
 		/// </param>
-		protected abstract void ConnectCore( ConnectingClientSocketAsyncEventArgs context );
+		protected abstract void ConnectCore( ConnectingContext context );
 
 		/// <summary>
 		///		Respond to nofication to finish asynchronous connecting operation via context.
@@ -311,7 +191,7 @@ namespace MsgPack.Rpc.Protocols
 		/// <remarks>
 		///		When a derived class override this method, it must call base implementation of this method.
 		/// </remarks>
-		protected virtual void OnConnected( ConnectingClientSocketAsyncEventArgs context, bool completedSynchronously )
+		protected virtual void OnConnected( ConnectingContext context, bool completedSynchronously )
 		{
 			if ( context == null )
 			{
@@ -320,19 +200,36 @@ namespace MsgPack.Rpc.Protocols
 
 			Contract.EndContractBlock();
 
-			if ( !context.ConnectionOrientedTransport.ConnectedSocket.ReceiveAsync( context.Transport.ReceivingContext ) )
-			{
-				this.OnReceived( context.Transport.ReceivingContext, true );
-			}
+			context.Client.OnConnected( context, completedSynchronously, context.UserAsyncState );
 
-			context.ConnectionOrientedTransport.OnConnected( context, completedSynchronously, context.InternalUserToken );
+			//Contract.Assume( context.Transport.SessionContext != null );
+
+			//var receivingContext =
+			//    new ReceivingContext(
+			//        context.Transport.SessionContext,
+			//        new RpcInputBuffer(
+			//            ChunkBuffer.CreateDefault(),
+			//            ( buffer, state ) => this.FeedMore( state as RpcSocketAsyncEventArgs ),
+			//            context.SocketContext
+			//        )
+			//    );
+
+			//this.RegisterTransportReceiveCallback(
+			//    context.Transport,
+			//    receivingContext
+			//);
+
+			//if ( !receivingContext.SocketContext.ConnectSocket.ReceiveAsync( receivingContext.SocketContext ) )
+			//{
+			//    this.OnReceived( receivingContext, true );
+			//}
 		}
 
 		#endregion -- Connect --
 
 		#region -- Send --
 
-		public void Send( SendingClientSocketAsyncEventArgs context )
+		public void Send( SendingContext context )
 		{
 			if ( context == null )
 			{
@@ -340,12 +237,15 @@ namespace MsgPack.Rpc.Protocols
 			}
 
 			Contract.EndContractBlock();
+
+			Contract.Assume( context.SocketContext.UserToken == null );
+			context.SocketContext.UserToken = context;
 			this.SendCore( context );
 		}
-		
-		protected abstract void SendCore( SendingClientSocketAsyncEventArgs context );
 
-		protected virtual void OnSent( SendingClientSocketAsyncEventArgs context, bool completedSynchronously )
+		protected abstract void SendCore( SendingContext context );
+
+		protected virtual void OnSent( SendingContext context, bool completedSynchronously )
 		{
 			if ( context == null )
 			{
@@ -354,39 +254,53 @@ namespace MsgPack.Rpc.Protocols
 
 			Contract.EndContractBlock();
 
-			if ( context.SocketError != SocketError.Success )
+			if ( context.SocketContext.SocketError != SocketError.Success )
 			{
 				if ( context.MessageId != null )
 				{
-					this.HandleError( context.LastOperation, context.MessageId.Value, context.SocketError );
+					this.HandleError( context.SocketContext.LastOperation, context.MessageId.Value, context.SocketContext.SocketError );
 				}
 				else
 				{
-					context.OnMessageSent( new SocketException( ( int )context.SocketError ), completedSynchronously );
+					context.OnMessageSent( new SocketException( ( int )context.SocketContext.SocketError ), completedSynchronously );
 				}
 
 				return;
 			}
 
-			var buffer = context.BufferList as IDisposable;
-			if ( buffer != null )
-			{
-				try { }
-				finally
-				{
-					context.BufferList = null;
-					buffer.Dispose();
-				}
-			}
+			//var buffer = context.SocketContext.BufferList as IDisposable;
+			//if ( buffer != null )
+			//{
+			//    try { }
+			//    finally
+			//    {
+			//        context.SocketContext.BufferList = null;
+			//        buffer.Dispose();
+			//    }
+			//}
 
 			if ( context.MessageId == null )
 			{
 				context.OnMessageSent( null, completedSynchronously );
 			}
+			else
+			{
+				this.Receive(
+					new ReceivingContext(
+						context.SessionContext,
+						new RpcInputBuffer(
+							context.SendingBuffer.Chunks,
+							( _, state ) => this.FeedMore( state as RpcSocketAsyncEventArgs ),
+							context.SocketContext
+						),
+						new Unpacker()
+					)
+				);
+			}
 		}
 
 
-		public void SendTo( SendingClientSocketAsyncEventArgs context )
+		public void SendTo( SendingContext context )
 		{
 			if ( context == null )
 			{
@@ -394,16 +308,17 @@ namespace MsgPack.Rpc.Protocols
 			}
 
 			Contract.EndContractBlock();
+			context.SocketContext.UserToken = context;
 			this.SendToCore( context );
 		}
 
-		protected abstract void SendToCore( SendingClientSocketAsyncEventArgs context );
+		protected abstract void SendToCore( SendingContext context );
 
 		#endregion  -- Send --
 
 		#region  -- Receive --
 
-		protected internal void Receive( ReceivingClientSocketAsyncEventArgs context )
+		protected internal void Receive( ReceivingContext context )
 		{
 			if ( context == null )
 			{
@@ -411,12 +326,13 @@ namespace MsgPack.Rpc.Protocols
 			}
 
 			Contract.EndContractBlock();
+			context.SocketContext.UserToken = context;
 			this.ReceiveCore( context );
 		}
 
-		protected abstract void ReceiveCore( ReceivingClientSocketAsyncEventArgs context );
+		protected abstract void ReceiveCore( ReceivingContext context );
 
-		protected virtual void OnReceived( ReceivingClientSocketAsyncEventArgs context, bool completedSynchronously )
+		protected virtual void OnReceived( ReceivingContext context, bool completedSynchronously )
 		{
 			if ( context == null )
 			{
@@ -425,21 +341,22 @@ namespace MsgPack.Rpc.Protocols
 
 			Contract.EndContractBlock();
 
-			var buffer = context.BufferList as IDisposable;
-			if ( buffer != null )
-			{
-				try { }
-				finally
-				{
-					context.BufferList = null;
-					buffer.Dispose();
-				}
-			}
+			// TODO: transport should dispose Buffer .
+			//var buffer = context.SocketContext.BufferList as IDisposable;
+			//if ( buffer != null )
+			//{
+			//    try { }
+			//    finally
+			//    {
+			//        context.SocketContext.BufferList = null;
+			//        buffer.Dispose();
+			//    }
+			//}
 		}
 
-		protected abstract int FeedMore( ReceivingClientSocketAsyncEventArgs context );
+		protected abstract BufferFeeding FeedMore( RpcSocketAsyncEventArgs context );
 
-		public void ReceiveFrom( ReceivingClientSocketAsyncEventArgs context )
+		public void ReceiveFrom( ReceivingContext context )
 		{
 			if ( context == null )
 			{
@@ -447,86 +364,12 @@ namespace MsgPack.Rpc.Protocols
 			}
 
 			Contract.EndContractBlock();
-
+			context.SocketContext.UserToken = context;
 			this.ReceiveFromCore( context );
 		}
 
-		protected abstract void ReceiveFromCore( ReceivingClientSocketAsyncEventArgs context );
+		protected abstract void ReceiveFromCore( ReceivingContext context );
 
 		#endregion  -- Receive --
-
-		#region -- Registration --
-
-		public void RegisterTransport( EndPoint remoteEndPoint, ClientTransport transport )
-		{
-			if ( remoteEndPoint == null )
-			{
-				throw new ArgumentNullException( "remoteEndPoint" );
-			}
-
-			if ( transport == null )
-			{
-				throw new ArgumentNullException( "transport" );
-			}
-
-			Contract.EndContractBlock();
-
-			var context = this.CreateReceivingContext( transport );
-			context.RemoteEndPoint = remoteEndPoint;
-			this.RegisterTransportReceiveCallback( transport, context );
-		}
-
-		public void RegisterTransport( EndPoint remoteEndPoint, ConnectionOrientedClientTransport transport, object asyncState )
-		{
-			if ( remoteEndPoint == null )
-			{
-				throw new ArgumentNullException( "remoteEndPoint" );
-			}
-
-			if ( transport == null )
-			{
-				throw new ArgumentNullException( "transport" );
-			}
-
-			Contract.EndContractBlock();
-
-			this.RegisterTransportReceiveCallback( transport, this.CreateReceivingContext( transport ) );
-			this.RegisterTransportConnectCallback( transport, this.CreateConnectingContext( transport, remoteEndPoint ), asyncState );
-		}
-
-		protected abstract void RegisterTransportReceiveCallback( ClientTransport transport, ReceivingClientSocketAsyncEventArgs context );
-
-		protected abstract void RegisterTransportConnectCallback( ConnectionOrientedClientTransport transport, ConnectingClientSocketAsyncEventArgs context, object asyncState );
-
-		public void UnregisterTransport( ClientTransport transport )
-		{
-			if ( transport == null )
-			{
-				throw new ArgumentNullException( "transport" );
-			}
-
-			Contract.EndContractBlock();
-
-			this.UnregisterTransportReceiveCallback( transport );
-		}
-
-		public void UnregisterTransport( ConnectionOrientedClientTransport transport )
-		{
-			if ( transport == null )
-			{
-				throw new ArgumentNullException( "transport" );
-			}
-
-			Contract.EndContractBlock();
-
-			this.UnregisterTransportReceiveCallback( transport );
-			this.UnregisterTransportConnectCallback( transport );
-		}
-
-		protected abstract void UnregisterTransportReceiveCallback( ClientTransport transport );
-
-		protected abstract void UnregisterTransportConnectCallback( ConnectionOrientedClientTransport transport );
-	
-		#endregion -- Registration --
 	}
 }

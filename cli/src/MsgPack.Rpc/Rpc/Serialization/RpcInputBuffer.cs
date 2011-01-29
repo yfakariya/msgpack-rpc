@@ -36,10 +36,11 @@ namespace MsgPack.Rpc.Serialization
 	{
 		// This class is responsible for lifecycle of 'hot' segments of PooledBuffer.
 
-		private readonly Func<ChunkBuffer, BufferFeeding> _feeding;
+		private readonly Func<ChunkBuffer, object, BufferFeeding> _feeding;
+		private readonly object _feedingState;
 		private ChunkBuffer _chunks;
 
-		public IList<ArraySegment<byte>> Chunks
+		internal ChunkBuffer Chunks
 		{
 			get { return this._chunks; }
 		}
@@ -47,50 +48,39 @@ namespace MsgPack.Rpc.Serialization
 		private int _readingPositionInSegment;
 		private int _segmentIndex;
 		private int _position;
-		private int _length;
+		private long _length;
 
-		internal RpcInputBuffer( ChunkBuffer buffer, int length, Func<ChunkBuffer,BufferFeeding> feeding )
+		internal RpcInputBuffer( ChunkBuffer buffer, Func<ChunkBuffer, object, BufferFeeding> feeding, object feedingState )
 		{
 			Contract.Assert( buffer != null );
-			Contract.Assert( length >= 0 );
 			Contract.Assert( feeding != null );
 
 			this._chunks = buffer;
-			this._length = length;
+			this._length = buffer.TotalLength;
 			this._feeding = feeding;
+			this._feedingState = feedingState;
 			this._segmentIndex = 0;
 			this._readingPositionInSegment = -1;
 			this._position = -1;
 		}
 
+		/// <summary>
+		///		Cleanup internal resources.
+		/// </summary>
 		public void Dispose()
 		{
 			this._chunks.Dispose();
 		}
 
-		//public void Reset()
-		//{
-		//    this._segmentIndex = 0;
-		//    this._readingPositionInSegment = -1;
-		//    this._position = 0;
-		//}
+#warning TODO: impl
+		public int Remaining { get { throw new NotImplementedException(); } }
 
-		//public bool RequestFeeding()
-		//{
-		//    var result = this._feeding( this._buffer );
-		//    if ( result.Feeded == 0 )
-		//    {
-		//        return false;
-		//    }
-
-		//    if ( result.ReallocatedBuffer != null )
-		//    {
-		//        this._buffer = result.ReallocatedBuffer;
-		//    }
-
-		//    return true;
-		//}
-
+		/// <summary>
+		///		Get <see cref="Iterator"/> to enumerate content of this buffer.
+		/// </summary>
+		/// <returns>
+		///		 <see cref="Iterator"/> to enumerate content of this buffer.
+		/// </returns>
 		public Iterator GetEnumerator()
 		{
 			return new Iterator( this );
@@ -119,6 +109,18 @@ namespace MsgPack.Rpc.Serialization
 			private readonly RpcInputBuffer _enclosing;
 			private bool _isDisposed;
 
+			/// <summary>
+			///		Get current byte.
+			/// </summary>
+			/// <value>
+			///		Current byte.
+			/// </value>
+			/// <exception cref="ObjectDisposedException">
+			///		This iterator is disposed.
+			/// </exception>
+			/// <exception cref="InvalidOperationException">
+			///		This iterator is in before head.
+			/// </exception>
 			public byte Current
 			{
 				get
@@ -137,18 +139,31 @@ namespace MsgPack.Rpc.Serialization
 				get { return this.Current; }
 			}
 
-			public Iterator( RpcInputBuffer enclosing )
+			internal Iterator( RpcInputBuffer enclosing )
 			{
 				this._enclosing = enclosing;
 				this._isDisposed = false;
 			}
 
+			/// <summary>
+			///		Cleanup internal resources.
+			/// </summary>
 			public void Dispose()
 			{
 				this._isDisposed = true;
 				//this._enclosing._buffer.Shrink( this._enclosing._segmentIndex, this._enclosing._readingPositionInSegment );
 			}
 
+			/// <summary>
+			///		Try move this iterator to next position.
+			/// </summary>
+			/// <returns>
+			///		If this iterator succeeded to move next then true.
+			///		If this iterator exceeds range then false.
+			/// </returns>
+			/// <exception cref="ObjectDisposedException">
+			///		This iterator is disposed.
+			/// </exception>
 			public bool MoveNext()
 			{
 				if ( this._isDisposed )
@@ -159,7 +174,7 @@ namespace MsgPack.Rpc.Serialization
 				this._enclosing._readingPositionInSegment++;
 				this._enclosing._position++;
 
-				if( this._enclosing.Chunks.Count == 0 || this._enclosing._position == this._enclosing._length)
+				if ( this._enclosing.Chunks.Count == 0 || this._enclosing._position == this._enclosing._length )
 				{
 					if ( !this.RequestMoreData() )
 					{
@@ -168,7 +183,7 @@ namespace MsgPack.Rpc.Serialization
 				}
 
 				var segment = this._enclosing.Chunks[ this._enclosing._segmentIndex ];
-				while( segment.Count == this._enclosing._readingPositionInSegment )
+				while ( segment.Count == this._enclosing._readingPositionInSegment )
 				{
 					if ( this._enclosing.Chunks.Count == this._enclosing._segmentIndex + 1 )
 					{
@@ -196,7 +211,7 @@ namespace MsgPack.Rpc.Serialization
 			private bool RequestMoreData()
 			{
 				// Reach to initial buffer length, so try to get more.
-				var feedingResult = this._enclosing._feeding( this._enclosing._chunks );
+				var feedingResult = this._enclosing._feeding( this._enclosing._chunks, this._enclosing._feedingState );
 				if ( feedingResult.Feeded == 0 )
 				{
 					// Extra data does not exist.

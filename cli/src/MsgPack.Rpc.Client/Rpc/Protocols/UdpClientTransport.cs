@@ -24,6 +24,8 @@ using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Net.Sockets;
 using System.Net;
+using MsgPack.Rpc.Serialization;
+using MsgPack.Collections;
 
 namespace MsgPack.Rpc.Protocols
 {
@@ -34,13 +36,19 @@ namespace MsgPack.Rpc.Protocols
 	internal sealed class UdpClientTransport : ClientTransport
 	{
 		private readonly EndPoint _remoteEndPoint;
+		private readonly RpcSocket _socket;
 
 		public UdpClientTransport( RpcSocket socket, EndPoint remoteEndPoint, ClientEventLoop eventLoop, RpcClientOptions options )
-			: base( socket, eventLoop, options )
+			: base( socket == null ? RpcTransportProtocol.UdpIp : socket.Protocol, eventLoop, options )
 		{
-			if ( socket.Protocol.ProtocolType != ProtocolType.Tcp )
+			if ( socket == null )
 			{
-				throw new ArgumentException( "socket must be connected TCP socket.", "socketContext" );
+				throw new ArgumentNullException( "socket" );
+			}
+
+			if ( socket.Protocol.ProtocolType != ProtocolType.Udp )
+			{
+				throw new ArgumentException( "socket must be connected TCP socket.", "socket" );
 			}
 
 			if ( remoteEndPoint == null )
@@ -50,26 +58,36 @@ namespace MsgPack.Rpc.Protocols
 
 			Contract.EndContractBlock();
 
+			this._socket = socket;
 			this._remoteEndPoint = remoteEndPoint;
-			this.EventLoop.RegisterTransport( remoteEndPoint, this );
 		}
 
 		protected sealed override void Dispose( bool disposing )
 		{
-			this.EventLoop.UnregisterTransport( this );
+			this._socket.Dispose();
 			base.Dispose( disposing );
 		}
 
-		public sealed override SendingClientSocketAsyncEventArgs CreateNewSendingContext( int? messageId, Action<SendingClientSocketAsyncEventArgs, Exception, bool> onMessageSent )
+		protected sealed override SendingContext CreateNewSendingContext( int? messageId, Action<SendingContext, Exception, bool> onMessageSent )
 		{
-			var result = base.CreateNewSendingContext( messageId, onMessageSent );
-			result.RemoteEndPoint = this._remoteEndPoint;
-			return result;
+			// TODO: cache buffer
+			return
+				new SendingContext(
+					new ClientSessionContext(
+						this,
+						this.EventLoop.CreateSocketContext( this._remoteEndPoint )
+					),
+					new RpcOutputBuffer( ChunkBuffer.CreateDefault() ),
+					null,
+					onMessageSent
+				);
 		}
-
-		protected sealed override void SendCore( SendingClientSocketAsyncEventArgs context )
+		
+		protected sealed override void SendCore( SendingContext context )
 		{
 			this.EventLoop.SendTo( context );
+			throw new NotImplementedException();
+			//this.EventLoop.ReceiveFrom()
 		}
 	}
 }

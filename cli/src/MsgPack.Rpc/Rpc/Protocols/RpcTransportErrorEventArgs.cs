@@ -25,7 +25,7 @@ using System.Net.Sockets;
 namespace MsgPack.Rpc.Protocols
 {
 	/// <summary>
-	///		Reprsents event data of <see cref="EventLoop.OnError"/> event.
+	///		Reprsents event data of <see cref="EventLoop.TransportError"/> event.
 	/// </summary>
 	public sealed class RpcTransportErrorEventArgs : EventArgs
 	{

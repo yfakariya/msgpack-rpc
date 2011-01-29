@@ -163,9 +163,10 @@ namespace MsgPack.Rpc.Protocols
 			this._timeoutWatchDog = new Timer( this.CheckTimeout, null, ( long )this.TimeoutWatchPeriod.TotalMilliseconds, Timeout.Infinite );
 		}
 
-		public void Dispose()
+		protected override void Dispose( bool disposing )
 		{
 			this._timeoutWatchDog.Dispose();
+			base.Dispose( disposing );
 		}
 
 		private void CheckTimeout( object state )

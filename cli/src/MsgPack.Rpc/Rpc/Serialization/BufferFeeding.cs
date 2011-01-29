@@ -19,24 +19,24 @@
 #endregion -- License Terms --
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+
 using MsgPack.Collections;
-using System.Globalization;
 
 namespace MsgPack.Rpc.Serialization
 {
+	// TODO: use T4 template
 	// TODO: refactor
 	/// <summary>
 	///		Represents buffer feeding result.
 	/// </summary>
-	/// <param name="buffer">Buffer to be feeded.</param>
-	/// <returns>Count of feeded bytes.</returns>
 	public struct BufferFeeding : IEquatable<BufferFeeding>
 	{
+#pragma  warning disable 1591
 		private readonly ChunkBuffer _reallocatedBuffer;
 
+		/// <summary>
+		/// 
+		/// </summary>
 		public ChunkBuffer ReallocatedBuffer
 		{
 			get { return this._reallocatedBuffer; }
@@ -52,7 +52,7 @@ namespace MsgPack.Rpc.Serialization
 		public BufferFeeding( int feeded )
 			: this( feeded, null ) { }
 
-		public BufferFeeding (int feeded, ChunkBuffer reallocatedBuffer)
+		public BufferFeeding( int feeded, ChunkBuffer reallocatedBuffer )
 		{
 			this._feeded = feeded;
 			this._reallocatedBuffer = reallocatedBuffer;
@@ -92,7 +92,7 @@ namespace MsgPack.Rpc.Serialization
 			}
 		}
 
-		public static bool operator ==(BufferFeeding left,  BufferFeeding right)
+		public static bool operator ==( BufferFeeding left, BufferFeeding right )
 		{
 			return left.Equals( right );
 		}
@@ -101,5 +101,6 @@ namespace MsgPack.Rpc.Serialization
 		{
 			return !left.Equals( right );
 		}
+#pragma  warning restore 1591
 	}
 }

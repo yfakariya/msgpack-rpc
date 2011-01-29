@@ -79,19 +79,27 @@
     </Compile>
     <Compile Include="Rpc\DefaultRpcClientFactoryCache.cs" />
     <Compile Include="Rpc\NotificationMessageAsyncResult.cs" />
+    <Compile Include="Rpc\Protocols\ClientSessionContext.cs">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="Rpc\Protocols\ConnectionOrientedClientTransport.cs" />
+    <Compile Include="Rpc\Services\ConnectionPool.cs" />
+    <Compile Include="Rpc\Protocols\IAsyncConnectClient.cs" />
     <Compile Include="Rpc\Protocols\IOCompletionPortClientEventLoopFactory.cs" />
     <Compile Include="Rpc\Protocols\ClientEventLoop.cs">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Rpc\Protocols\ClientEventLoopFactory.cs" />
-    <Compile Include="Rpc\Protocols\ClientSocketAsyncEventArgs.cs" />
     <Compile Include="Rpc\Protocols\ClientTransport.cs" />
     <Compile Include="Rpc\Protocols\IMessageIdGenerator.cs" />
     <Compile Include="Rpc\Protocols\IOCompletionPortClientEventLoop.cs" />
     <Compile Include="Rpc\Protocols\MessageIdGenerator.cs" />
-    <Compile Include="Rpc\Protocols\PollingClientEventLoop.cs" />
-    <Compile Include="Rpc\Protocols\PollingClientEventLoopFactory.cs" />
+    <Compile Include="Rpc\Protocols\Structs.cs" />
+    <Compile Include="Rpc\Protocols\Structs.g.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Structs.g.tt</DependentUpon>
+    </Compile>
     <Compile Include="Rpc\Protocols\TcpClientTransport.cs" />
     <Compile Include="Rpc\Protocols\UdpClientTransport.cs" />
     <Compile Include="Rpc\RequestMessageAsyncResult.cs" />
@@ -111,6 +119,10 @@
       <Generator>TextTemplatingFileGenerator</Generator>
       <LastGenOutput>ClientServices.cs</LastGenOutput>
     </None>
+    <None Include="Rpc\Protocols\Structs.g.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <LastGenOutput>Structs.g.cs</LastGenOutput>
+    </None>
     <None Include="Rpc\RpcClientOptions.tt">
       <Generator>TextTemplatingFileGenerator</Generator>
       <LastGenOutput>RpcClientOptions.cs</LastGenOutput>
@@ -129,6 +141,7 @@
   <ItemGroup>
     <Service Include="{508349B6-6B84-4DF5-91F0-309BEEBAD82D}" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

@@ -25,7 +25,7 @@ using System.Threading;
 namespace MsgPack.Collections.Concurrent
 {
 	/// <summary>
-	///		Custom BlockCollection implentation which can be used with <see cref="ThreadPool.RegisterWaitForSingleObject"/>.
+	///		Custom BlockCollection implentation which can be used with <see cref="ThreadPool.RegisterWaitForSingleObject(WaitHandle,WaitOrTimerCallback,Object,TimeSpan,Boolean)"/>.
 	/// </summary>
 	/// <typeparam name="T"></typeparam>
 	internal sealed class NotifiableBlockingCollection<T> : IDisposable

@@ -85,6 +85,11 @@ namespace MsgPack.Rpc
 	[Serializable]
 	public partial class RpcException : Exception
 	{
+		/// <summary>
+		///		"ErrorCode" of utf-8.
+		/// </summary>
+		private static readonly MessagePackObject _errorCodeKeyUtf8 = MessagePackConvert.EncodeString( "ErrorCode" );
+
 		private readonly RpcError _rpcError;
 
 		/// <summary>
@@ -116,7 +121,7 @@ namespace MsgPack.Rpc
 		///		Initialize new instance which represents specified error with specified message..
 		/// </summary>
 		/// <param name="rpcError">
-		///		Metadata of error. If you specify null, <see cref="RpcError.RemoteRuntimeError"/> is used.
+		///		Metadata of error. If you specify null, <see cref="MsgPack.Rpc.RpcError.RemoteRuntimeError"/> is used.
 		///	</param>
 		/// <param name="message">
 		///		Error message to desribe condition. Note that this message should not include security related information.
@@ -142,7 +147,7 @@ namespace MsgPack.Rpc
 		///		Initialize new instance which represents specified error with specified message and inner exception.
 		/// </summary>
 		/// <param name="rpcError">
-		///		Metadata of error. If you specify null, <see cref="RpcError.RemoteRuntimeError"/> is used.
+		///		Metadata of error. If you specify null, <see cref="MsgPack.Rpc.RpcError.RemoteRuntimeError"/> is used.
 		///	</param>
 		/// <param name="message">
 		///		Error message to desribe condition. Note that this message should not include security related information.
@@ -185,169 +190,17 @@ namespace MsgPack.Rpc
 		/// </exception>
 		protected RpcException( SerializationInfo info, StreamingContext context ) : base( info, context ) { }
 
-		public override string ToString()
-		{
-			// Safe to-string.
-			return this.ToString( false );
-		}
-
-		public string ToString( bool includesDebugInformation )
-		{
-			if ( !includesDebugInformation || this._remoteExceptions == null )
-			{
-				return base.ToString();
-			}
-			else
-			{
-				Contract.Assert( this._remoteExceptions != null );
-
-				// <Type>: <Message> ---> <InnerType1>: <InnerMessage1> ---> <InnerType2>: <InnerMessage2> ---> ...
-				// <ServerInnerStackTraceN>
-				//    --- End of inner exception stack trace ---
-				// <ServerInnerStackTrace1>
-				//    --- End of inner exception stack trace ---
-				// 
-				// Server statck trace:
-				// <ServerStackTrace>
-				// 
-				// Exception rethrown at[N]:
-				// <ClientInnerStackTraceN>
-				//    --- End of inner exception stack trace ---
-				// <ClientInnerStackTrace1>
-				//    --- End of inner exception stack trace ---
-				// <StackTrace>
-				StringBuilder stringBuilder = new StringBuilder();
-				// Build <Type>: <Message> chain
-				this.BuildExceptionMessage( stringBuilder );
-				// Build stacktrace chain.
-				this.BuildExceptionStackTrace( stringBuilder );
-
-				return stringBuilder.ToString();
-			}
-		}
-
-		private void BuildExceptionMessage( StringBuilder stringBuilder )
-		{
-			stringBuilder.Append( this.GetType().FullName ).Append( ": " ).Append( this.Message );
-
-			if ( this.InnerException != null )
-			{
-				Contract.Assert( this._remoteExceptions == null );
-
-				for ( var inner = this.InnerException; inner != null; inner = inner.InnerException )
-				{
-					var asRpcException = inner as RpcException;
-					if ( asRpcException != null )
-					{
-						asRpcException.BuildExceptionMessage( stringBuilder );
-					}
-					else
-					{
-						stringBuilder.Append( " ---> " ).Append( inner.GetType().FullName ).Append( ": " ).Append( inner.Message );
-					}
-				}
-			}
-			else if ( this._remoteExceptions != null )
-			{
-				foreach ( var remoteException in this._remoteExceptions )
-				{
-					stringBuilder.Append( " ---> " ).Append( remoteException.TypeName ).Append( ": " ).Append( remoteException.Message );
-				}
-			}
-		}
-
-		private void BuildExceptionStackTrace( StringBuilder stringBuilder )
-		{
-			if ( this.InnerException != null )
-			{
-				Contract.Assert( this._remoteExceptions == null );
-
-				for ( var inner = this.InnerException; inner != null; inner = inner.InnerException )
-				{
-					var asRpcException = inner as RpcException;
-					if ( asRpcException != null )
-					{
-						asRpcException.BuildExceptionStackTrace( stringBuilder );
-					}
-					else
-					{
-						BuildGeneralStackTrace( inner, stringBuilder );
-					}
-
-					stringBuilder.Append( "   --- End of inner exception stack trace ---" );
-				}
-			}
-			else if ( this._remoteExceptions != null && this._remoteExceptions.Length > 0 )
-			{
-				for ( int i = 0; i < this._remoteExceptions.Length; i++ )
-				{
-					if ( i > 0
-						&& this._remoteExceptions[ i ].Hop != this._remoteExceptions[ i - 1 ].Hop
-						&& this._remoteExceptions[ i ].TypeName == this._remoteExceptions[ i - 1 ].TypeName
-					)
-					{
-						// Serialized -> Deserialized case
-						stringBuilder.AppendFormat( "Exception transferred at[{0}]:", this._remoteExceptions[ i - 1 ].Hop );
-					}
-					else
-					{
-						// Inner exception case
-						stringBuilder.Append( "   --- End of inner exception stack trace ---" );
-					}
-
-					foreach ( var frame in this._remoteExceptions[ i ].StackTrace )
-					{
-						WriteStackFrame( stringBuilder, frame );
-					}
-				}
-
-				stringBuilder.AppendFormat( "Exception transferred at[{0}]:", this._remoteExceptions[ this._remoteExceptions.Length - 1 ].Hop ).AppendLine();
-			}
-
-			BuildGeneralStackTrace( this, stringBuilder );
-		}
-
-		private static void BuildGeneralStackTrace( Exception target, StringBuilder stringBuilder )
-		{
-			var stackTrace = new StackTrace( target, true );
-			for ( int i = 0; i < stackTrace.FrameCount; i++ )
-			{
-				WriteStackFrame( stringBuilder, stackTrace.GetFrame( stackTrace.FrameCount - ( i + 1 ) ) );
-			}
-		}
-
-		private static void WriteStackFrame( StringBuilder stringBuilder, StackFrame frame )
-		{
-			const string at = "at";
-			stringBuilder.AppendFormat( "   " + at + "{0}", frame.GetMethod() );
-			if ( frame.GetFileName() != null )
-			{
-				stringBuilder.AppendFormat( " " + at + " {0}", frame.GetFileName() );
-
-				if ( frame.GetFileLineNumber() > 0 )
-				{
-					stringBuilder.AppendFormat( ":line {0}", frame.GetFileLineNumber() );
-				}
-			}
-		}
-
-		private static void WriteStackFrame( StringBuilder stringBuilder, RemoteStackFrame frame )
-		{
-			const string at = "at";
-			stringBuilder.AppendFormat( "   " + at + "{0}", frame.MethodSignature );
-			if ( frame.FileName != null )
-			{
-				stringBuilder.AppendFormat( " " + at + " {0}", frame.FileName );
-
-				if ( frame.FileLineNumber > 0 )
-				{
-					stringBuilder.AppendFormat( ":line {0}", frame.FileLineNumber );
-				}
-			}
-		}
-
-		private static readonly MessagePackObject _errorCodeKeyUtf8 = MessagePackConvert.EncodeString( "ErrorCode" );
-
+		/// <summary>
+		///		Create <see cref="RpcException"/> or dervied instance which corresponds to sepcified error information.
+		/// </summary>
+		/// <param name="error">Basic error information. This information will propagate to client.</param>
+		/// <param name="errorDetail">Detailed error information, which is usally debugging purpose only, so will not propagate to client.</param>
+		/// <returns>
+		///		<see cref="RpcException"/> or dervied instance which corresponds to sepcified error information.
+		/// </returns>
+		/// <exception cref="ArgumentException">
+		///		<paramref name="error"/> is <see cref="MessagePackObject.IsNil">nil</see>.
+		/// </exception>
 		public static RpcException FromMessage( MessagePackObject error, MessagePackObject errorDetail )
 		{
 			// TODO: Application specific customization
@@ -391,55 +244,16 @@ namespace MsgPack.Rpc
 			return new UnexpcetedRpcException( error, errorDetail );
 		}
 
+		/// <summary>
+		///		Create <see cref="RpcException"/> for specified serialization error.
+		/// </summary>
+		/// <param name="serializationError">Serialization error.</param>
+		/// <returns>
+		///		<see cref="RpcException"/> for specified serialization error.
+		/// </returns>
 		internal static RpcException FromRpcError( RpcErrorMessage serializationError )
 		{
 			return serializationError.Error.ToException( serializationError.Detail );
 		}
-
-		//public static RpcException FromSocketException( SocketException inner )
-		//{
-		//    return FromSocketError( inner.SocketErrorCode, inner );
-		//}
-
-		//public static RpcException FromSocketError( SocketError socketError )
-		//{
-		//    return FromSocketError( socketError, null );
-		//}
-
-		//private static RpcException FromSocketError( SocketError socketError, SocketException inner )
-		//{
-		//    var socketException = inner ?? new SocketException( ( int )socketError );
-		//    switch ( socketError )
-		//    {
-		//        case SocketError.Success:
-		//        {
-		//            Debug.Fail( "'socketError' is 'Success'." );
-		//            throw new InvalidOperationException( "'socketError' is 'Success'." );
-		//        }
-		//        case SocketError.ConnectionRefused:
-		//        {
-		//            return new RpcTransportException( RpcError.ConnectionRefusedError, "Connection refused from remote host.", socketException.Message, inner );
-		//        }
-		//        case SocketError.TimedOut:
-		//        {
-		//            return new RpcTransportException( RpcError.ConnectionTimeoutError, "Connection timed out.", socketException.Message, inner );
-		//        }
-		//        case SocketError.HostDown:
-		//        {
-		//            return new RpcServerUnavailableException( RpcError.ServerBusyError, "Server is down.", socketException.Message, inner );
-		//        }
-		//        case SocketError.HostNotFound:
-		//        case SocketError.HostUnreachable:
-		//        case SocketError.NetworkDown:
-		//        case SocketError.NoData:
-		//        {
-		//            return new RpcTransportException( RpcError.NetworkUnreacheableError, "Cannot reach specified remote end point.", socketException.Message, inner );
-		//        }
-		//        default:
-		//        {
-		//            return new RpcTransportException( RpcError.TransportError, "Other transportation error is occured.", socketException.Message, inner );
-		//        }
-		//    }
-		//}
 	}
 }

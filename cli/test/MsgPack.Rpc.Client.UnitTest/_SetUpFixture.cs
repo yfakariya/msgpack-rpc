@@ -19,15 +19,22 @@
 #endregion -- License Terms --
 
 using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using NUnit.Framework;
+using System.Diagnostics.Contracts;
 
-namespace MsgPack.Rpc.Protocols
+namespace MsgPack
 {
-	/// <summary>
-	///		Defines common interface of error sink for current RPC session.
-	/// </summary>
-	public interface IAsyncSessionErrorSink
+	[CLSCompliant( false )]
+	[SetUpFixture]
+	public sealed class _SetUpFixture
 	{
-		Exception Error { get; }
-		void OnError( Exception error, bool completedSynchronously );
+		[SetUp]
+		public void SetupCurrentNamespaceTests()
+		{
+			Contract.ContractFailed += ( sender, e ) => e.SetUnwind();
+		}
 	}
 }

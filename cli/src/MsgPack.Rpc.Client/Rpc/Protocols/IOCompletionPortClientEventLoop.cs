@@ -24,6 +24,8 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Net;
 using System.Collections.Concurrent;
+using MsgPack.Rpc.Serialization;
+using MsgPack.Collections;
 
 namespace MsgPack.Rpc.Protocols
 {
@@ -37,29 +39,44 @@ namespace MsgPack.Rpc.Protocols
 		{
 		}
 
-		protected override void ConnectCore( ConnectingClientSocketAsyncEventArgs context )
+		protected override void ConnectCore( ConnectingContext context )
 		{
-			if ( !context.Transport.Socket.ConnectAsync( context ) )
+			if ( !context.Client.Socket.ConnectAsync( context.Client.SocketContext ) )
 			{
 				this.OnConnected( context, true );
 			}
 		}
 
-		protected sealed override void OnConnected( ConnectingClientSocketAsyncEventArgs context, bool completedSynchronously )
+		protected sealed override void OnConnected( ConnectingContext context, bool completedSynchronously )
 		{
-			Contract.Assume( context is ClientSocketAsyncEventArgs );
-
-			if ( context.ConnectByNameError != null )
+			if ( context.Client.SocketContext.ConnectByNameError != null )
 			{
 				// error 
-				( context as ClientSocketAsyncEventArgs ).ConnectionOrientedTransport.OnConnectError( RpcError.NetworkUnreacheableError, context.ConnectByNameError, completedSynchronously, context.InternalUserToken );
+				context.Client.OnConnectError(
+					RpcError.NetworkUnreacheableError,
+					context.Client.SocketContext.ConnectByNameError,
+					completedSynchronously,
+					context.UserAsyncState
+				);
+				return;
+			}
+
+			if ( context.Client.SocketContext.SocketError != SocketError.Success )
+			{
+				// error 
+				context.Client.OnConnectError(
+					RpcError.NetworkUnreacheableError,
+					new SocketException( ( int )context.Client.SocketContext.SocketError ),
+					completedSynchronously,
+					context.UserAsyncState
+				);
 				return;
 			}
 
 			base.OnConnected( context, completedSynchronously );
 		}
 
-		protected sealed override void SendCore( SendingClientSocketAsyncEventArgs context )
+		protected sealed override void SendCore( SendingContext context )
 		{
 			if ( context.CancellationToken.IsCancellationRequested )
 			{
@@ -67,18 +84,18 @@ namespace MsgPack.Rpc.Protocols
 				return;
 			}
 
-			if ( !context.SendAsync() )
+			if ( !context.SocketContext.SendAsync() )
 			{
-				context.OnSent();
+				context.SocketContext.OnSent( true );
 			}
 		}
 
-		protected sealed override void OnSent( SendingClientSocketAsyncEventArgs context, bool completedSynchronously )
+		protected sealed override void OnSent( SendingContext context, bool completedSynchronously )
 		{
 			base.OnSent( context, completedSynchronously );
 		}
 
-		protected sealed override void SendToCore( SendingClientSocketAsyncEventArgs context )
+		protected sealed override void SendToCore( SendingContext context )
 		{
 			if ( context.CancellationToken.IsCancellationRequested )
 			{
@@ -86,80 +103,60 @@ namespace MsgPack.Rpc.Protocols
 				return;
 			}
 
-			if ( !context.SendToAsync() )
+			if ( !context.SocketContext.SendToAsync() )
 			{
-				context.OnSent();
+				context.SocketContext.OnSent( true );
 			}
 		}
 
-		protected sealed override void ReceiveCore( ReceivingClientSocketAsyncEventArgs context )
+		protected sealed override void ReceiveCore( ReceivingContext context )
 		{
-			if ( !context.ReceiveAsync() )
+			if ( !context.SocketContext.ReceiveAsync() )
 			{
-				context.OnReceived();
+				context.SocketContext.OnReceived( true );
 			}
 		}
 
-		protected sealed override void ReceiveFromCore( ReceivingClientSocketAsyncEventArgs context )
+		protected sealed override void ReceiveFromCore( ReceivingContext context )
 		{
-			if ( !context.ReceiveFromAsync() )
+			if ( !context.SocketContext.ReceiveFromAsync() )
 			{
-				context.OnReceived();
+				context.SocketContext.OnReceived( true );
 			}
 		}
 
-		protected sealed override void OnReceived( ReceivingClientSocketAsyncEventArgs context, bool completedSynchronously )
+		protected sealed override void OnReceived( ReceivingContext context, bool completedSynchronously )
 		{
-			if ( context.SocketError != SocketError.Success )
+			if ( context.SocketContext.SocketError != SocketError.Success )
 			{
-				this.HandleError( context.LastOperation, context.SocketError );
+				this.HandleError( context.SocketContext.LastOperation, context.SocketContext.SocketError );
 				return;
 			}
 
-			var receivingContext = context as ReceivingClientSocketAsyncEventArgs;
-			Contract.Assume( receivingContext != null );
-
 			if ( !context.CancellationToken.IsCancellationRequested )
 			{
-				receivingContext.Transport.Receive( receivingContext );
+				context.SessionContext.Transport.Receive( context );
 			}
 
 			base.OnReceived( context, completedSynchronously );
 		}
 
-		protected sealed override int FeedMore( ReceivingClientSocketAsyncEventArgs context )
+		protected sealed override BufferFeeding FeedMore( RpcSocketAsyncEventArgs context )
 		{
-			return context.ConnectSocket.Receive( context );
-		}
+			var receivingContext = ( ReceivingContext )context.UserToken;
 
-		protected sealed override void RegisterTransportConnectCallback( ConnectionOrientedClientTransport transport, ConnectingClientSocketAsyncEventArgs context, object asyncState )
-		{
-			this.Connect( context, asyncState );
-		}
-
-		private readonly ConcurrentDictionary<ClientTransport, ReceivingClientSocketAsyncEventArgs> _receiveCallbackTable = new ConcurrentDictionary<ClientTransport, ReceivingClientSocketAsyncEventArgs>();
-
-		protected sealed override void RegisterTransportReceiveCallback( ClientTransport transport, ReceivingClientSocketAsyncEventArgs context )
-		{
-			if ( !this._receiveCallbackTable.TryAdd( transport, context ) )
+			// FIXME: Use async receive
+			if ( receivingContext.ReceivingBuffer.Remaining > 0 )
 			{
-				throw new InvalidOperationException( transport + " is already registered." );
+				var received = context.ConnectSocket.Receive( context );
+				return new BufferFeeding( received );
 			}
-
-			this.Receive( context );
-		}
-
-		protected sealed override void UnregisterTransportConnectCallback( ConnectionOrientedClientTransport transport )
-		{
-			// nop.
-		}
-
-		protected sealed override void UnregisterTransportReceiveCallback( ClientTransport transport )
-		{
-			ReceivingClientSocketAsyncEventArgs context;
-			if ( this._receiveCallbackTable.TryRemove( transport, out context ) )
+			else
 			{
-				context.ConnectSocket.Shutdown( SocketShutdown.Receive );
+				// FIXME: Buffer recycling
+				var newBuffer = ChunkBuffer.CreateDefault();
+				var received = context.ConnectSocket.Receive( context );
+				return new BufferFeeding( received, newBuffer );
 			}
 		}
 	}

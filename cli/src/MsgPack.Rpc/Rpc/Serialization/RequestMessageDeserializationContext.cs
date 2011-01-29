@@ -33,6 +33,14 @@ namespace MsgPack.Rpc.Serialization
 	{
 		private int? _messageId;
 
+		/// <summary>
+		///		Get ID of deserializing message.
+		/// </summary>
+		/// <value>
+		///		ID of deserializing message.
+		///		When message has not been deserialized yet, then null.
+		///		Else, if message is notification message, then null.
+		/// </value>
 		public int? MessageId
 		{
 			get { return this._messageId; }
@@ -41,6 +49,12 @@ namespace MsgPack.Rpc.Serialization
 
 		private string _methodName;
 
+		/// <summary>
+		///		Get name of method to be called.
+		/// </summary>
+		/// <value>
+		///		Name of method to be called.
+		/// </value>
 		public string MethodName
 		{
 			get { return this._methodName; }
@@ -62,9 +76,15 @@ namespace MsgPack.Rpc.Serialization
 
 		private IList<MessagePackObject> _arguments;
 
+		/// <summary>
+		///		Get arguments of method to be called.
+		/// </summary>
+		/// <value>
+		///		Arguments of method to be called. This value will not be null.
+		/// </value>
 		public IList<MessagePackObject> Arguments
 		{
-			get { return this._arguments; }
+			get { return this._arguments ?? Arrays<MessagePackObject>.Empty; }
 			internal set { this._arguments = value; }
 		}
 

@@ -23,6 +23,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using NUnit.Framework;
+using MsgPack.Collections;
 
 namespace MsgPack.Rpc.Serialization
 {
@@ -32,32 +33,32 @@ namespace MsgPack.Rpc.Serialization
 		[Test]
 		public void TestReadWrite()
 		{
-			using ( var target = new RpcOutputBuffer() )
+			using ( var target = new RpcOutputBuffer( ChunkBuffer.CreateDefault() ) )
 			{
-				using ( var stream = target.OpenStream() )
+				using ( var stream = target.OpenWriteStream() )
 				{
 					stream.Write( Enumerable.Range( 1, 10 ).Select( i => ( byte )i ).ToArray(), 0, 10 );
 					stream.Write( Enumerable.Range( 11, 10 ).Select( i => ( byte )i ).ToArray(), 0, 10 );
 				}
 
-				using ( var stream = target.OpenStream() )
+				using ( var stream = target.OpenWriteStream() )
 				{
 					stream.Write( Enumerable.Range( 21, 10 ).Select( i => ( byte )i ).ToArray(), 0, 10 );
 				}
 
-				using ( var stream = target.OpenStream() ) { }
+				using ( var stream = target.OpenWriteStream() ) { }
 
-				using ( var stream = target.OpenStream() )
+				using ( var stream = target.OpenWriteStream() )
 				{
 					stream.Write( Enumerable.Range( 31, 10 ).Select( i => ( byte )i ).ToArray(), 0, 10 );
 				}
 
-				using ( var stream = target.OpenStream() )
+				using ( var stream = target.OpenWriteStream() )
 				{
 					stream.Write( new byte[ 0 ], 0, 0 );
 				}
 
-				using ( var stream = target.OpenStream() )
+				using ( var stream = target.OpenWriteStream() )
 				{
 					stream.Write( Enumerable.Range( 41, 10 ).Select( i => ( byte )i ).ToArray(), 0, 10 );
 				}
@@ -72,9 +73,9 @@ namespace MsgPack.Rpc.Serialization
 		[Test]
 		public void TestSwap()
 		{
-			using ( var target = new RpcOutputBuffer() )
+			using ( var target = new RpcOutputBuffer( ChunkBuffer.CreateDefault() ) )
 			{
-				using ( var stream = target.OpenStream() )
+				using ( var stream = target.OpenWriteStream() )
 				{
 					stream.Write( Enumerable.Range( 1, 10 ).Select( i => ( byte )i ).ToArray(), 0, 10 );
 				}
@@ -99,9 +100,9 @@ namespace MsgPack.Rpc.Serialization
 		[Test]
 		public void TestSwap_DoneNothing()
 		{
-			using ( var target = new RpcOutputBuffer() )
+			using ( var target = new RpcOutputBuffer( ChunkBuffer.CreateDefault() ) )
 			{
-				using ( var stream = target.OpenStream() )
+				using ( var stream = target.OpenWriteStream() )
 				{
 					stream.Write( Enumerable.Range( 1, 10 ).Select( i => ( byte )i ).ToArray(), 0, 10 );
 				}
@@ -118,9 +119,9 @@ namespace MsgPack.Rpc.Serialization
 		[Test]
 		public void TestSwap_WriteBytesEmpty()
 		{
-			using ( var target = new RpcOutputBuffer() )
+			using ( var target = new RpcOutputBuffer( ChunkBuffer.CreateDefault() ) )
 			{
-				using ( var stream = target.OpenStream() )
+				using ( var stream = target.OpenWriteStream() )
 				{
 					stream.Write( Enumerable.Range( 1, 10 ).Select( i => ( byte )i ).ToArray(), 0, 10 );
 				}
@@ -138,9 +139,9 @@ namespace MsgPack.Rpc.Serialization
 		[ExpectedException(typeof(ArgumentNullException))]
 		public void TestSwap_WriteBytesNull()
 		{
-			using ( var target = new RpcOutputBuffer() )
+			using ( var target = new RpcOutputBuffer( ChunkBuffer.CreateDefault() ) )
 			{
-				using ( var stream = target.OpenStream() )
+				using ( var stream = target.OpenWriteStream() )
 				{
 					stream.Write( Enumerable.Range( 1, 10 ).Select( i => ( byte )i ).ToArray(), 0, 10 );
 				}

@@ -41,7 +41,7 @@ namespace MsgPack.Rpc.Serialization
 			var id = Environment.TickCount;
 			var method = Guid.NewGuid().ToString();
 			var args = new object[] { 1, "String", null, true };
-			var buffer = new RpcOutputBuffer();
+			var buffer = new RpcOutputBuffer( ChunkBuffer.CreateDefault() );
 			Assert.IsTrue( target.Serialize( id, method, args, buffer ).IsSuccess );
 			byte[] serialized = buffer.ReadBytes().ToArray();
 			var mpo =
@@ -73,7 +73,7 @@ namespace MsgPack.Rpc.Serialization
 
 			var method = Guid.NewGuid().ToString();
 			var args = new object[] { 1, "String", null, true };
-			var buffer = new RpcOutputBuffer();
+			var buffer = new RpcOutputBuffer( ChunkBuffer.CreateDefault() );
 			Assert.IsTrue( target.Serialize( null, method, args, buffer ).IsSuccess );
 			byte[] serialized = buffer.ReadBytes().ToArray();
 			var mpo =
@@ -127,7 +127,7 @@ namespace MsgPack.Rpc.Serialization
 			using ( var underlying = ChunkBuffer.CreateDefault() )
 			{
 				underlying.Feed( new ArraySegment<byte>( serialized ) );
-				using ( var buffer = new RpcInputBuffer( underlying, serialized.Length, FeedingNotRequired ) )
+				using ( var buffer = new RpcInputBuffer( underlying, FeedingNotRequired, null ) )
 				{
 					RequestMessage actual;
 					var result = target.Deserialize( buffer, out actual );
@@ -172,7 +172,7 @@ namespace MsgPack.Rpc.Serialization
 			using ( var underlying = ChunkBuffer.CreateDefault() )
 			{
 				underlying.Feed( new ArraySegment<byte>( serialized ) );
-				using ( var buffer = new RpcInputBuffer( underlying, serialized.Length, FeedingNotRequired ) )
+				using ( var buffer = new RpcInputBuffer( underlying, FeedingNotRequired, null ) )
 				{
 					RequestMessage actual;
 					var result = target.Deserialize( buffer, out actual );
@@ -223,8 +223,7 @@ namespace MsgPack.Rpc.Serialization
 				using ( var buffer =
 					new RpcInputBuffer(
 						underlying,
-						10,
-						item =>
+						( item, _ ) =>
 						{
 							indexOfPackets++;
 							if ( indexOfPackets >= packets.Length )
@@ -235,8 +234,10 @@ namespace MsgPack.Rpc.Serialization
 
 							item.Feed( new ArraySegment<byte>( packets[ indexOfPackets ] ) );
 							return new BufferFeeding( packets[ indexOfPackets ].Length );
-						}
-					) )
+						},
+						null
+					)
+				)
 				{
 					RequestMessage actual;
 					var result = target.Deserialize( buffer, out actual );
@@ -286,8 +287,7 @@ namespace MsgPack.Rpc.Serialization
 				using ( var buffer =
 					new RpcInputBuffer(
 						underlying,
-						10,
-						item =>
+						( item, _ ) =>
 						{
 							indexOfPackets++;
 							if ( indexOfPackets >= packets.Length )
@@ -297,7 +297,8 @@ namespace MsgPack.Rpc.Serialization
 
 							item.Feed( new ArraySegment<byte>( packets[ indexOfPackets ] ) );
 							return new BufferFeeding( packets[ indexOfPackets ].Length );
-						}
+						},
+						null
 					) )
 				{
 					RequestMessage actual;
@@ -313,7 +314,7 @@ namespace MsgPack.Rpc.Serialization
 			}
 		}
 
-		private static BufferFeeding FeedingNotRequired( ChunkBuffer buffer )
+		private static BufferFeeding FeedingNotRequired( ChunkBuffer buffer, object state )
 		{
 			Assert.Fail( "Feeding must not required." );
 			return default( BufferFeeding );

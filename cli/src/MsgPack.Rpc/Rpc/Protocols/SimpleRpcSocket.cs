@@ -55,6 +55,17 @@ namespace MsgPack.Rpc.Protocols
 		}
 
 		/// <summary>
+		///		Get <see cref="EndPoint"/> of local endpoint.
+		/// </summary>
+		/// <value>
+		///		<see cref="EndPoint"/> of local endpoint.
+		/// </value>
+		public sealed override EndPoint LocalEndPoint
+		{
+			get { return this._socket.LocalEndPoint; }
+		}
+
+		/// <summary>
 		///		Initialize new instance.
 		/// </summary>
 		/// <param name="socket">
@@ -95,7 +106,7 @@ namespace MsgPack.Rpc.Protocols
 		///		If operation has been completed synchronously then FALSE.
 		/// </returns>
 		/// <remarks>
-		///		This method delegates to <see cref="Socket.ConnectAsync"/>.
+		///		This method delegates to <see cref="Socket.ConnectAsync(SocketAsyncEventArgs)"/>.
 		/// </remarks>
 		protected sealed override bool ConnectAsyncCore( RpcSocketAsyncEventArgs e )
 		{
@@ -129,6 +140,10 @@ namespace MsgPack.Rpc.Protocols
 		/// </remarks>
 		protected sealed override bool SendAsyncCore( RpcSocketAsyncEventArgs e )
 		{
+			Contract.Assume( e.BufferList != null );
+			Contract.Assume( e.BufferList.Count > 0, e.BufferList.Count.ToString() );
+			Contract.Assume( ( e as SocketAsyncEventArgs ).ConnectSocket == this._socket );
+			Contract.Assume( e.RemoteEndPoint != null );
 			return this._socket.SendAsync( e );
 		}
 
@@ -182,7 +197,6 @@ namespace MsgPack.Rpc.Protocols
 		///		Receive data from connected remote endpoint synchronously.
 		/// </summary>
 		/// <param name="e">Context information.</param>
-		/// <param name="error">Socket error will be store.</param>
 		/// <returns>
 		///		Transferred bytes length.
 		/// </returns>

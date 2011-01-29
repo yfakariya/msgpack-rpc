@@ -50,6 +50,14 @@ namespace MsgPack.Rpc.Protocols
 		public abstract EndPoint RemoteEndPoint { get; }
 
 		/// <summary>
+		///		Get <see cref="EndPoint"/> of local endpoint.
+		/// </summary>
+		/// <value>
+		///		<see cref="EndPoint"/> of locla endpoint.
+		/// </value>
+		public abstract EndPoint LocalEndPoint { get; }
+
+		/// <summary>
 		///		Initialize new instance.
 		/// </summary>
 		protected RpcSocket() { }
@@ -81,7 +89,7 @@ namespace MsgPack.Rpc.Protocols
 		/// <exception cref="ArgumentNullException">
 		///		<paramref name="e"/> is null.
 		/// </exception>
-		/// <seealso cref="Socket.ConnectAsync"/>.
+		/// <seealso cref="Socket.ConnectAsync(SocketAsyncEventArgs)"/>.
 		public bool ConnectAsync( RpcSocketAsyncEventArgs e )
 		{
 			if ( e == null )
@@ -101,7 +109,7 @@ namespace MsgPack.Rpc.Protocols
 		/// <returns>
 		///		If operation has been completed synchronously then FALSE.
 		/// </returns>
-		/// <seealso cref="Socket.ConnectAsync"/>.		
+		/// <seealso cref="Socket.ConnectAsync(SocketAsyncEventArgs)"/>.		
 		protected abstract bool ConnectAsyncCore( RpcSocketAsyncEventArgs e );
 
 		/// <summary>

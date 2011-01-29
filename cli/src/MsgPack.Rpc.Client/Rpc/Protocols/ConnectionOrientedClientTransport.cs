@@ -5,87 +5,66 @@ using System.Text;
 using System.Net.Sockets;
 using System.Diagnostics.Contracts;
 using System.Net;
+using MsgPack.Rpc.Serialization;
+using MsgPack.Collections;
+using MsgPack.Rpc.Protocols.Services;
 
 namespace MsgPack.Rpc.Protocols
 {
 	public abstract class ConnectionOrientedClientTransport : ClientTransport
 	{
-		private RpcSocket _connectedSocket;
-		public RpcSocket ConnectedSocket
-		{
-			get { return this._connectedSocket; }
-		}
+		private const int _defaultMinimumConnectionCount = 2;
+		private const int _defaultMaximumConnectionCount = 16;
+		private static readonly TimeSpan _defaultConnectTimeout = TimeSpan.FromSeconds( 15 );
+		private readonly ConnectionPool _connectionPool;
+		private readonly TimeSpan? _connectTimeout;
 
-		protected ConnectionOrientedClientTransport( RpcSocket socket, ClientEventLoop eventLoop, RpcClientOptions options )
-			: base( socket, eventLoop, options ) { }
-
-		protected override void Dispose( bool disposing )
-		{
-			// TODO: trace
-			this.EventLoop.UnregisterTransport( this );
-			base.Dispose( disposing );
-		}
-
-		public void Connect( EndPoint remoteEndPoint, ConnectingClientSocketAsyncEventArgs newContext, object asyncState )
+		protected ConnectionOrientedClientTransport( EndPoint remoteEndPoint, RpcTransportProtocol protocol, ClientEventLoop eventLoop, RpcClientOptions options )
+			: base( protocol, eventLoop, options )
 		{
 			if ( remoteEndPoint == null )
 			{
 				throw new ArgumentNullException( "remoteEndPoint" );
 			}
 
-			if ( newContext == null )
-			{
-				throw new ArgumentNullException( "newContext" );
-			}
-
-			if ( newContext.RemoteEndPoint != null )
-			{
-				throw new ArgumentException( "RemoteEndPoint already set.", "newContext" );
-			}
-
-			Contract.EndContractBlock();
-
-			newContext.RemoteEndPoint = remoteEndPoint;
-			this.EventLoop.RegisterTransport( remoteEndPoint, this, asyncState );
+			this._connectionPool =
+				new ConnectionPool(
+					remoteEndPoint,
+					protocol,
+					eventLoop,
+					options == null ? _defaultMinimumConnectionCount : ( /* options.MinimumConnectionCount ?? */_defaultMinimumConnectionCount ),
+					options == null ? _defaultMaximumConnectionCount : ( /* options.MaximumConnectionCount ?? */_defaultMaximumConnectionCount )
+				);
+			this._connectTimeout =
+				options == null
+				? _defaultConnectTimeout
+				: ( options.ConnectTimeout ?? _defaultConnectTimeout );
 		}
 
-		public void OnConnected( ConnectingClientSocketAsyncEventArgs newContext, bool completedSynchronously, object asyncState )
+		protected override void Dispose( bool disposing )
 		{
-			if ( newContext == null )
-			{
-				throw new ArgumentNullException( "newContext" );
-			}
-
-			if ( newContext.ConnectSocket == null )
-			{
-				throw new ArgumentException( "newContext must have valid connect socket.", "newContext" );
-			}
-
-			Contract.EndContractBlock();
-
-			this._connectedSocket = newContext.ConnectSocket;
-			this.OnConnectedCore( newContext, completedSynchronously, asyncState );
+			// TODO: trace
+			this._connectionPool.Dispose();
+			base.Dispose( disposing );
 		}
 
-		protected abstract void OnConnectedCore( ConnectingClientSocketAsyncEventArgs newContext, bool completedSynchronously, object asyncState );
-
-		public void OnConnectError( RpcError error, Exception exception, bool completedSynchronously, object asyncState )
+		protected override SendingContext CreateNewSendingContext( int? messageId, Action<SendingContext, Exception, bool> onMessageSent )
 		{
-			if ( error == null )
-			{
-				throw new ArgumentNullException( "error" );
-			}
-
-			if ( exception == null )
-			{
-				throw new ArgumentNullException( "exception" );
-			}
-
-			Contract.EndContractBlock();
-
-			this.OnConnectErrorCore( error, exception, completedSynchronously, asyncState );
+			// FIXME: from buffer pool?
+			var socketContext = this._connectionPool.Borrow( this._connectTimeout, this.EventLoop.CancellationToken );
+			return
+				new SendingContext(
+					new ClientSessionContext( this, socketContext ),
+					new RpcOutputBuffer( ChunkBuffer.CreateDefault() ),
+					messageId,
+					onMessageSent
+				);
 		}
 
-		protected abstract void OnConnectErrorCore( RpcError error, Exception exception, bool completedSynchronously, object asyncState );
+		protected override void OnReceive( ReceivingContext context, ResponseMessage response, RpcErrorMessage error )
+		{
+			base.OnReceive( context, response, error );
+			this._connectionPool.Return( context.SocketContext );
+		}
 	}
 }

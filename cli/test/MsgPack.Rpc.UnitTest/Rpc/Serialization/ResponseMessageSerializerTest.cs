@@ -70,7 +70,7 @@ namespace MsgPack.Rpc.Serialization
 			// TODO: Mock filters
 			var target = new ResponseMessageSerializer( null, null, null, null, null );
 
-			var buffer = new RpcOutputBuffer();
+			var buffer = new RpcOutputBuffer( ChunkBuffer.CreateDefault() );
 
 			Assert.IsTrue( target.Serialize( id, returnValue, isVoid, error, buffer ).IsSuccess );
 			byte[] serialized = buffer.ReadBytes().ToArray();
@@ -150,7 +150,7 @@ namespace MsgPack.Rpc.Serialization
 			using ( var underlying = ChunkBuffer.CreateDefault() )
 			{
 				underlying.Feed( new ArraySegment<byte>( serialized ) );
-				using ( var buffer = new RpcInputBuffer( underlying, serialized.Length, FeedingNotRequired ) )
+				using ( var buffer = new RpcInputBuffer( underlying, FeedingNotRequired, null ) )
 				{
 					ResponseMessage actual;
 					var result = target.Deserialize( buffer, out actual );
@@ -243,8 +243,7 @@ namespace MsgPack.Rpc.Serialization
 				using ( var buffer =
 					new RpcInputBuffer(
 						underlying,
-						10,
-						item =>
+						( item, _ ) =>
 						{
 							indexOfPackets++;
 							if ( indexOfPackets >= packets.Length )
@@ -255,7 +254,8 @@ namespace MsgPack.Rpc.Serialization
 
 							item.Feed( new ArraySegment<byte>( packets[ indexOfPackets ] ) );
 							return new BufferFeeding( packets[ indexOfPackets ].Length );
-						}
+						},
+						null
 					) )
 				{
 					ResponseMessage actual;
@@ -293,7 +293,7 @@ namespace MsgPack.Rpc.Serialization
 			}
 		}
 
-		private static BufferFeeding FeedingNotRequired( ChunkBuffer buffer )
+		private static BufferFeeding FeedingNotRequired( ChunkBuffer buffer, object state )
 		{
 			Assert.Fail( "Feeding must not required." );
 			return default( BufferFeeding );

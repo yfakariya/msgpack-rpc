@@ -28,7 +28,7 @@ using MsgPack.Collections;
 namespace MsgPack.Rpc.Serialization
 {
 	[TestFixture]
-	[Timeout(3000)]
+	[Timeout( 3000 )]
 	public sealed class RpcInputBufferTest
 	{
 		[Test]
@@ -37,8 +37,8 @@ namespace MsgPack.Rpc.Serialization
 			using ( var buffer = ChunkBuffer.CreateDefault() )
 			{
 				var expected = Enumerable.Range( 1, 2 ).Select( item => ( byte )item ).ToArray();
-				buffer.Fill( expected );
-				using ( var target = new RpcInputBuffer( buffer, 2, _ => default( BufferFeeding ) ) )
+				buffer.Feed( expected.ToArray() );
+				using ( var target = new RpcInputBuffer( buffer, ( _0, _1 ) => default( BufferFeeding ), null ) )
 				{
 					CollectionAssert.AreEqual( expected, target.ToArray() );
 				}
@@ -51,12 +51,11 @@ namespace MsgPack.Rpc.Serialization
 			bool feeded = false;
 			using ( var buffer = ChunkBuffer.CreateDefault() )
 			{
-				buffer.Fill( Enumerable.Range( 1, 2 ).Select( item => ( byte )item ).ToArray() );
+				buffer.Feed( Enumerable.Range( 1, 2 ).Select( item => ( byte )item ).ToArray() );
 				using ( var target =
 					new RpcInputBuffer(
 						buffer,
-						2,
-						_ =>
+						( _0, _1 ) =>
 						{
 							if ( feeded )
 							{
@@ -64,9 +63,10 @@ namespace MsgPack.Rpc.Serialization
 							}
 
 							feeded = true;
-							buffer.Fill( Enumerable.Range( 3, 4 ).Select( item => ( byte )item ).ToArray(), 2 );
+							buffer.Feed( Enumerable.Range( 3, 4 ).Select( item => ( byte )item ).ToArray() );
 							return new BufferFeeding( 4 );
-						}
+						},
+						null
 				) )
 				{
 					CollectionAssert.AreEqual( Enumerable.Range( 1, 6 ).ToArray(), target.ToArray() );
@@ -80,8 +80,8 @@ namespace MsgPack.Rpc.Serialization
 			using ( var buffer = ChunkBuffer.CreateDefault() )
 			{
 				var expected = Enumerable.Range( 1, 6 ).Select( item => ( byte )item ).ToArray();
-				buffer.Fill( expected );
-				using ( var target = new RpcInputBuffer( buffer, 6, _ => default( BufferFeeding ) ) )
+				buffer.Feed( expected.ToArray() );
+				using ( var target = new RpcInputBuffer( buffer, ( _0, _1 ) => default( BufferFeeding ), null ) )
 				{
 					CollectionAssert.AreEqual( expected, target.ToArray() );
 				}
@@ -94,12 +94,11 @@ namespace MsgPack.Rpc.Serialization
 			bool feeded = false;
 			using ( var buffer = ChunkBuffer.CreateDefault() )
 			{
-				buffer.Fill( Enumerable.Range( 1, 6 ).Select( item => ( byte )item ).ToArray() );
+				buffer.Feed( new ArraySegment<byte>( Enumerable.Range( 1, 6 ).Select( item => ( byte )item ).ToArray() ) );
 				using ( var target =
 					new RpcInputBuffer(
 						buffer,
-						4,
-						_ =>
+						( _0, _1 ) =>
 						{
 							if ( feeded )
 							{
@@ -107,10 +106,12 @@ namespace MsgPack.Rpc.Serialization
 							}
 
 							feeded = true;
-							buffer.Fill( Enumerable.Range( 7, 2 ).Select( item => ( byte )item ).ToArray(), 6 );
+							buffer.Feed( Enumerable.Range( 7, 2 ).Select( item => ( byte )item ).ToArray() );
 							return new BufferFeeding( 4 );
-						}
-				) )
+						},
+						null
+					)
+				)
 				{
 					CollectionAssert.AreEqual( Enumerable.Range( 1, 8 ).ToArray(), target.ToArray() );
 				}
@@ -123,8 +124,8 @@ namespace MsgPack.Rpc.Serialization
 			using ( var buffer = ChunkBuffer.CreateDefault() )
 			{
 				var expected = Enumerable.Range( 1, 2 ).Select( item => ( byte )item ).ToArray();
-				buffer.Fill( expected );
-				using ( var target = new RpcInputBuffer( buffer, 3, _ => new BufferFeeding( 0 ) ) )
+				buffer.Feed( expected.ToArray() );
+				using ( var target = new RpcInputBuffer( buffer, ( _0, _1 ) => new BufferFeeding( 0 ), null ) )
 				{
 					CollectionAssert.AreEqual( Enumerable.Range( 1, 2 ).ToArray(), target.ToArray() );
 				}

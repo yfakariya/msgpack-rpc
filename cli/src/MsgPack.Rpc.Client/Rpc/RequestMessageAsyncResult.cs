@@ -31,37 +31,55 @@ namespace MsgPack.Rpc
 	/// <summary>
 	///		<see cref="IAsyncResult"/> implementation for async RPC.
 	/// </summary>
-	internal sealed class RequestMessageAsyncResult : MessageAsyncResult
+	internal sealed class RequestMessageAsyncResult : MessageAsyncResult, IResponseHandler
 	{
-		private ResponseMessage _response;
+		private ResponseMessage? _response;
 
-		public ResponseMessage Response
+		/// <summary>
+		///		Get response message.
+		/// </summary>
+		/// <value>
+		///		Response message. If response message has not been set, then null.
+		/// </value>
+		public ResponseMessage? Response
 		{
-			get
-			{
-				if ( !this.IsCompleted )
-				{
-					throw new InvalidOperationException( "Operation has not been completed yet." );
-				}
-
-				this.Finish();
-				return this._response;
-			}
+			get { return this._response; }
 		}
 
-		internal void OnReceived( ResponseMessage responseMessage, bool completedSynchronously )
+		/// <summary>
+		///		Complete this invocation as success.
+		/// </summary>
+		/// <param name="response">
+		///		Replied response.
+		///	</param>
+		/// <param name="completedSynchronously">
+		///		When operation is completed same thread as initiater then true.
+		/// </param>
+		public void HandleResponse( ResponseMessage response, bool completedSynchronously )
 		{
-			Contract.Assert( responseMessage.MessageId == this.MessageId );
-
 			try { }
 			finally
 			{
-				this._response = responseMessage;
+				this._response = response;
 				Thread.MemoryBarrier();
 				base.Complete( completedSynchronously );
 			}
 		}
 
+		/// <summary>
+		///		Complete this invocation as error.
+		/// </summary>
+		/// <param name="error">
+		///		Occurred RPC error.
+		///	</param>
+		/// <param name="completedSynchronously">
+		///		When operation is completed same thread as initiater then true.
+		/// </param>
+		public void HandleError( RpcErrorMessage error, bool completedSynchronously )
+		{
+			this.OnError( RpcException.FromRpcError( error ), completedSynchronously );
+		}
+		
 		public RequestMessageAsyncResult( Object owner, int messageId, AsyncCallback asyncCallback, object asyncState )
 			: base( owner, messageId, asyncCallback, asyncState ) { }
 	}

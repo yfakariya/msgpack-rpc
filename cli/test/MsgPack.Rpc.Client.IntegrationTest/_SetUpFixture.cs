@@ -22,31 +22,19 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Net.Sockets;
+using NUnit.Framework;
 using System.Diagnostics.Contracts;
 
-namespace MsgPack.Rpc.Protocols.Connection
+namespace MsgPack
 {
-	/// <summary>
-	///		Encapselate underlying socket of pooled connection.
-	/// </summary>
-	internal sealed class InnerConnection
+	[CLSCompliant( false )]
+	[SetUpFixture]
+	public sealed class _SetUpFixture
 	{
-		private readonly Socket _socket;
-
-		/// <summary>
-		///		Get underlying raw socket.
-		/// </summary>
-		/// <value>Underlying raw socket.</value>
-		public Socket Socket
+		[SetUp]
+		public void SetupCurrentNamespaceTests()
 		{
-			get { return this._socket; }
-		}
-
-		public InnerConnection( Socket socket )
-		{
-			Contract.Assert( socket != null );
-			this._socket = socket;
+			Contract.ContractFailed += ( sender, e ) => e.SetUnwind();
 		}
 	}
 }

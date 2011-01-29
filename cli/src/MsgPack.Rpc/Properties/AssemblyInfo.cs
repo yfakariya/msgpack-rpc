@@ -31,6 +31,7 @@ using System.Runtime.CompilerServices;
 
 [assembly: InternalsVisibleTo( "MsgPack.Rpc.Client" )]
 [assembly: InternalsVisibleTo( "MsgPack.Rpc.Server" )]
+[assembly: InternalsVisibleTo( "MsgPack.Rpc.TestUtilities" )]
 
 #if DEBUG || PERFORMANCE_TEST
 [assembly: InternalsVisibleTo( "MsgPack.Rpc.UnitTest" )]

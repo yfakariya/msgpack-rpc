@@ -160,7 +160,7 @@ namespace MsgPack.Rpc
 		/// </returns>
 		/// <remarks>
 		///		This method is equivalant to <see cref="ToString(string,IFormatProvider)"/> 
-		///		with "G" and <see cref="CultureInfo.CurrentCulture"/>.
+		///		with "G" and <see cref="System.Globalization.CultureInfo.CurrentCulture"/>.
 		/// </remarks>
 		public override string ToString()
 		{
@@ -176,7 +176,7 @@ namespace MsgPack.Rpc
 		/// </returns>
 		/// <remarks>
 		///		This method is equivalant to <see cref="ToString(string,IFormatProvider)"/> 
-		///		with <paramref name="format"/> and <see cref="CultureInfo.CurrentCulture"/>.
+		///		with <paramref name="format"/> and <see cref="System.Globalization.CultureInfo.CurrentCulture"/>.
 		/// </remarks>
 		public string ToString( string format )
 		{
@@ -256,7 +256,7 @@ namespace MsgPack.Rpc
 		/// <param name="left"><see cref="RpcTransportProtocol"/>.</param>
 		/// <param name="right"><see cref="RpcTransportProtocol"/>.</param>
 		/// <returns>
-		///		If <paramref name="left"/> is equal to <see cref="right"/> then true.
+		///		If <paramref name="left"/> is equal to <paramref name="right"/> then true.
 		/// </returns>
 		public static bool operator ==( RpcTransportProtocol left, RpcTransportProtocol right )
 		{
@@ -269,7 +269,7 @@ namespace MsgPack.Rpc
 		/// <param name="left"><see cref="RpcTransportProtocol"/>.</param>
 		/// <param name="right"><see cref="RpcTransportProtocol"/>.</param>
 		/// <returns>
-		///		If <paramref name="left"/> is not equal to <see cref="right"/> then true.
+		///		If <paramref name="left"/> is not equal to <paramref name="right"/> then true.
 		/// </returns>
 		public static bool operator !=( RpcTransportProtocol left, RpcTransportProtocol right )
 		{

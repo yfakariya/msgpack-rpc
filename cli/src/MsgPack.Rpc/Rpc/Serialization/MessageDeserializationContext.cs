@@ -20,21 +20,36 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using MsgPack.Collections;
 using System.Diagnostics.Contracts;
 using System.Globalization;
 
 namespace MsgPack.Rpc.Serialization
 {
 	// TODO: cleanup
+	/// <summary>
+	///		Contains context information of message deserialization.
+	/// </summary>
 	public abstract class MessageDeserializationContext : SerializationErrorSink
 	{
 		private readonly RpcInputBuffer _buffer;
 		private int _processed;
 		private readonly int? _maxLength;
 
+		/// <summary>
+		///		Initaialize new instance.
+		/// </summary>
+		/// <param name="buffer">
+		///		<see cref="RpcInputBuffer"/> which is source of inbound message.
+		/// </param>
+		/// <param name="maxLength">
+		///		Max quota length of buffer. Null means unlimited.
+		/// </param>
+		/// <exception cref="ArgumentNullException">
+		///		<paramref name="buffer"/> is null.
+		/// </exception>
+		/// <exception cref="ArgumentOutOfRangeException">
+		///		<paramref name="maxLength"/> is not null but negative.
+		/// </exception>
 		protected MessageDeserializationContext( RpcInputBuffer buffer, int? maxLength )
 		{
 			if ( buffer == null )

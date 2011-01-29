@@ -27,6 +27,7 @@ using MsgPack.Rpc.Protocols;
 using System.Net;
 using System.Threading;
 using MsgPack.Collections;
+using MsgPack.Rpc.Serialization;
 
 namespace MsgPack.Rpc
 {
@@ -64,60 +65,20 @@ namespace MsgPack.Rpc
 
 		public static RpcClient CreateTcp( EndPoint remoteEndPoint, ClientEventLoop eventLoop, RpcClientOptions options )
 		{
-			using ( var waitHandle = new ManualResetEventSlim() )
+			RpcTransportException failure = null;
+			var transport =
+				new TcpClientTransport(
+					remoteEndPoint,
+					options.ForceIPv4.GetValueOrDefault() ? RpcTransportProtocol.TcpIpV4 : RpcTransportProtocol.TcpIp,
+					eventLoop,
+					options
+				);
+			if ( failure != null )
 			{
-				RpcTransportException failure = null;
-				var transport =
-					new TcpClientTransport(
-							ClientServices.SocketFactory(
-								( options.ForceIPv4.GetValueOrDefault() ? RpcTransportProtocol.TcpIpV4 : RpcTransportProtocol.TcpIp ).CreateSocket()
-							),
-							eventLoop,
-							options,
-							( _0, _1, _2 ) => waitHandle.Set(),
-							( error, exception, _0, _1 ) =>
-							{
-								failure = new RpcTransportException( error, "Failed to connect.", null, exception );
-								waitHandle.Set();
-							}
-					);
-				transport.Connect( remoteEndPoint, eventLoop.CreateConnectingContext( transport, remoteEndPoint ), null );
-				waitHandle.Wait();
-				if ( failure != null )
-				{
-					throw failure;
-				}
-
-				return new RpcClient( transport );
+				throw failure;
 			}
-		}
 
-		public static IAsyncResult BeginCreateTcp( EndPoint remoteEndPoint, ClientEventLoop eventLoop, RpcClientOptions options, AsyncCallback asyncCallback, object asyncState )
-		{
-			var asyncResult = new CreateTcpAsyncResult( null, asyncCallback, asyncState );
-			asyncResult.Transport =
-					new TcpClientTransport(
-							ClientServices.SocketFactory(
-								( options.ForceIPv4.GetValueOrDefault() ? RpcTransportProtocol.TcpIpV4 : RpcTransportProtocol.TcpIp ).CreateSocket()
-							),
-							eventLoop,
-							options,
-							( e, completedSynchronously, state ) => ( state as CreateTcpAsyncResult ).OnConnected( e, completedSynchronously ),
-							( error, exception, completedSynchronously, state ) => ( state as CreateTcpAsyncResult ).OnError( new RpcTransportException( error, "Failed to connect.", null, exception ), completedSynchronously )
-					);
-			asyncResult.Transport.Connect(
-				remoteEndPoint,
-				eventLoop.CreateConnectingContext( asyncResult.Transport, remoteEndPoint ),
-				asyncResult
-			);
-			return asyncResult;
-		}
-
-		public static RpcClient EndCreateTcp( IAsyncResult ar )
-		{
-			var asyncResult = AsyncResult.Verify<CreateTcpAsyncResult>( ar, null );
-			asyncResult.Finish();
-			return new RpcClient( asyncResult.Transport );
+			return new RpcClient( transport );
 		}
 
 		public static RpcClient CreateUdp( EndPoint remoteEndPoint, ClientEventLoop eventLoop, RpcClientOptions options )
@@ -170,20 +131,17 @@ namespace MsgPack.Rpc
 						messageId,
 						methodName,
 						arguments ?? Arrays<object>.Empty,
-						this._transport.CreateNewSendingContext(
-							messageId,
-							( e, error, completedSynchronously ) =>
+						( _, error, completedSynchronously ) =>
+						{
+							if ( error != null )
 							{
-								if ( error != null )
+								RequestMessageAsyncResult ar;
+								if ( this._responseAsyncResults.TryRemove( messageId, out ar ) )
 								{
-									RequestMessageAsyncResult ar;
-									if ( this._responseAsyncResults.TryRemove( messageId, out ar ) )
-									{
-										ar.OnError( error, completedSynchronously );
-									}
+									ar.OnError( error, completedSynchronously );
 								}
 							}
-						),
+						},
 						asyncResult
 					);
 					isSent = true;
@@ -202,16 +160,6 @@ namespace MsgPack.Rpc
 			return asyncResult;
 		}
 
-		private void OnReceived( ResponseMessage responseMessage, bool completedSynchronously, RequestMessageAsyncResult asyncResult )
-		{
-			asyncResult.OnReceived( responseMessage, completedSynchronously );
-
-			if ( asyncResult.AsyncCallback != null )
-			{
-				asyncResult.AsyncCallback( asyncResult );
-			}
-		}
-
 		public MessagePackObject EndCall( IAsyncResult asyncResult )
 		{
 			var requestAsyncResult = AsyncResult.Verify<RequestMessageAsyncResult>( asyncResult, this );
@@ -224,15 +172,16 @@ namespace MsgPack.Rpc
 
 			var response = requestAsyncResult.Response;
 			requestAsyncResult.Finish();
+			Contract.Assume( response.HasValue );
 
 			// Fetch message
-			if ( response.Error != null )
+			if ( response.Value.Error != null )
 			{
-				throw response.Error;
+				throw response.Value.Error;
 			}
 
 			// Return it.
-			return response.ReturnValue;
+			return response.Value.ReturnValue;
 		}
 
 		public void Notify( string methodName, params object[] arguments )
@@ -247,33 +196,16 @@ namespace MsgPack.Rpc
 
 		public IAsyncResult BeginNotify( string methodName, object[] arguments, AsyncCallback asyncCallback, object asyncState )
 		{
-			var asyncResult = new NotificationMessageAsyncResult( this, null, asyncCallback, asyncState );
-			this.Transport.Send( MessageType.Notification, null, methodName, arguments ?? Arrays<object>.Empty, this._transport.CreateNewSendingContext( null, asyncResult.OnMessageSent ), asyncResult );
+			var asyncResult = new NotificationMessageAsyncResult( this, asyncCallback, asyncState );
+			this.Transport.Send(
+				MessageType.Notification,
+				null,
+				methodName,
+				arguments ?? Arrays<object>.Empty,
+				asyncResult.OnMessageSent,
+				asyncResult
+			);
 			return asyncResult;
-		}
-
-		internal void OnFailedNotification( Exception exception, bool completedSynchronously, IAsyncSessionErrorSink errorSink )
-		{
-			var asyncResult = errorSink as MessageAsyncResult;
-			Contract.Assert( asyncResult != null );
-			this.OnSentNotify( exception, completedSynchronously, asyncResult );
-		}
-
-		private void OnSentNotify( Exception exception, bool completedSynchronously, MessageAsyncResult asyncResult )
-		{
-			if ( exception == null )
-			{
-				asyncResult.Complete( completedSynchronously );
-			}
-			else
-			{
-				asyncResult.OnError( exception, completedSynchronously );
-			}
-
-			if ( asyncResult.AsyncCallback != null )
-			{
-				asyncResult.AsyncCallback( asyncResult );
-			}
 		}
 
 		public void EndNotify( IAsyncResult asyncResult )
@@ -281,13 +213,13 @@ namespace MsgPack.Rpc
 			var notificationAsyncResult = AsyncResult.Verify<MessageAsyncResult>( asyncResult, this );
 			notificationAsyncResult.Finish();
 		}
-		
+
 		private sealed class CreateTcpAsyncResult : AsyncResult
 		{
-			public void OnConnected( ConnectingClientSocketAsyncEventArgs e, bool completedSynchronously )
+			public void OnConnected( ConnectingContext e, bool completedSynchronously )
 			{
 				Contract.Assume( e != null );
-				Contract.Assume( e.ConnectSocket != null );
+				Contract.Assume( e.Client.SocketContext.ConnectSocket != null );
 				base.Complete( completedSynchronously );
 			}
 

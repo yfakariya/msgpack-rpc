@@ -31,29 +31,25 @@ namespace MsgPack.Rpc.Serialization
 	/// </summary>
 	public sealed class RequestMessageSerializationContext : MessageSerializationContext
 	{
-		private string _methodName;
+		private readonly string _methodName;
 
+		/// <summary>
+		///		Get name of target method.
+		/// </summary>
+		/// <value>Name of target method.</value>
 		public string MethodName
 		{
 			get { return this._methodName; }
-			internal set
-			{
-				if ( value == null )
-				{
-					throw new ArgumentNullException( "value" );
-				}
-
-				if ( String.IsNullOrWhiteSpace( value ) )
-				{
-					throw new ArgumentException( "'value' cannot be empty.", "value" );
-				}
-
-				this._methodName = value;
-			}
 		}
 
 		private readonly IList<object> _arguments;
 
+		/// <summary>
+		///		Get arguments to invoke target method.
+		/// </summary>
+		/// <value>
+		///		Arguments to invoke target method.
+		/// </value>
 		public IList<object> Arguments
 		{
 			get { return this._arguments; }

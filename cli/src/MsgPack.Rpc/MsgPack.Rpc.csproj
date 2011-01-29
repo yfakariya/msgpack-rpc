@@ -63,7 +63,6 @@
     <Compile Include="Rpc\AsyncResult.cs">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Rpc\Protocols\IAsyncSessionErrorSink.cs" />
     <Compile Include="Rpc\MessageAsyncResult.cs">
       <SubType>Code</SubType>
     </Compile>
@@ -73,6 +72,7 @@
     <Compile Include="Rpc\Protocols\RpcSocket.cs" />
     <Compile Include="Rpc\Protocols\RpcSocketAsyncEventArgs.cs" />
     <Compile Include="Rpc\Protocols\SimpleRpcSocket.cs" />
+    <Compile Include="Rpc\RpcException.ToString.cs" />
     <Compile Include="Rpc\Serialization\BufferFeeding.cs" />
     <Compile Include="Rpc\Serialization\MessageDeserializationContext.cs" />
     <Compile Include="Rpc\Serialization\RequestMessageSerializationFilter.cs" />

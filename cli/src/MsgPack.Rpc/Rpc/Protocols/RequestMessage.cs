@@ -46,7 +46,7 @@ namespace MsgPack.Rpc.Protocols
 		/// </summary>
 		/// <value>
 		///		ID of this request/response message.
-		///		If this message is <see cref="MessageType.Notification"/> then this value is null.
+		///		If this message is <see cref="Protocols.MessageType.Notification"/> then this value is null.
 		/// </value>
 		public int MessageId
 		{

@@ -24,6 +24,7 @@ using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Net.Sockets;
 using System.Threading;
+using System.Net;
 
 namespace MsgPack.Rpc.Protocols
 {
@@ -33,75 +34,19 @@ namespace MsgPack.Rpc.Protocols
 	/// </summary>
 	internal sealed class TcpClientTransport : ConnectionOrientedClientTransport
 	{
-		private readonly ManualResetEventSlim _connectedDone;
-		private readonly Action<ConnectingClientSocketAsyncEventArgs, bool, object> _onConnected;
-		private readonly Action<RpcError, Exception, bool, object> _onConnectError;
-		private volatile Tuple<RpcError, Exception> _connectError;
-		private TimeSpan _connectTimeout;
-		private bool _disposed;
-
-		public TcpClientTransport( RpcSocket socket, ClientEventLoop eventLoop, RpcClientOptions options, Action<ConnectingClientSocketAsyncEventArgs, bool, object> onConnected, Action<RpcError, Exception, bool, object> onConnectError )
-			: base( socket, eventLoop, options )
+		public TcpClientTransport( EndPoint remoteEndPoint, RpcTransportProtocol protocol, ClientEventLoop eventLoop, RpcClientOptions options )
+			: base( remoteEndPoint, protocol, eventLoop, options )
 		{
-			if ( socket.Protocol.ProtocolType != ProtocolType.Tcp )
+			if ( protocol.ProtocolType != ProtocolType.Tcp )
 			{
-				throw new ArgumentException( "socket must be connected TCP socket.", "socketContext" );
+				throw new ArgumentException( "socket must be connected TCP socket.", "protocol" );
 			}
 
 			Contract.EndContractBlock();
-
-			this._connectedDone = new ManualResetEventSlim();
-			this._onConnected = onConnected;
-			this._onConnectError = onConnectError;
-			this._connectTimeout = options == null ? TimeSpan.FromSeconds( 5 ) : options.ConnectTimeout ?? TimeSpan.FromSeconds( 5 );
 		}
-
-		protected sealed override void Dispose( bool disposing )
+		
+		protected sealed override void SendCore( SendingContext context )
 		{
-			bool disposed = this._disposed;
-			if ( !disposed )
-			{
-				this.Socket.Shutdown( SocketShutdown.Both );
-				this.Drain();
-				this._connectedDone.Dispose();
-			}
-
-			this._disposed = true;
-			base.Dispose( disposing );
-		}
-
-		protected sealed override void OnConnectedCore( ConnectingClientSocketAsyncEventArgs newContext, bool completedSynchronously, object asyncState )
-		{
-			this._connectError = null;
-			this._connectedDone.Set();
-			if ( this._onConnected != null )
-			{
-				this._onConnected( newContext, completedSynchronously, asyncState );
-			}
-		}
-
-		protected sealed override void OnConnectErrorCore( RpcError error, Exception exception, bool completedSynchronously, object asyncState )
-		{
-			this._connectError = Tuple.Create( error, exception );
-			this._connectedDone.Set();
-			if ( this._onConnectError != null )
-			{
-				this._onConnectError( error, exception, completedSynchronously, asyncState );
-			}
-		}
-
-		protected sealed override void SendCore( SendingClientSocketAsyncEventArgs context )
-		{
-			if ( !this._connectedDone.IsSet )
-			{
-				this._connectedDone.Wait( this._connectTimeout );
-			}
-
-			if ( this._connectError != null )
-			{
-				new RpcTransportException( this._connectError.Item1, "Failed to connect destination.", null, this._connectError.Item2 );
-			}
-
 			this.EventLoop.Send( context );
 		}
 	}

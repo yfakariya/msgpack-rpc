@@ -25,6 +25,8 @@
 <#
 
 // This file defines RpcClientOptions which is chunk of boilerplate.
+// TODO: Use set property instead of setter method to use object initializer syntax.
+// TODO: Implement Clone<T> instead of freezing.
 var __typeName = "RpcClientOptions";
 var __options = new Dictionary<string, Tuple<string, string, string, string>> // Type of option, <summary>, <value>
 {

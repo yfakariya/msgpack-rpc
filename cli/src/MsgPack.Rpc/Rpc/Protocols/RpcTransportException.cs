@@ -58,7 +58,7 @@ namespace MsgPack.Rpc.Protocols
 		///			And then, user-friendly, safe message should be specified to <paramref name="message"/> like 'Internal Error."
 		///		</para>
 		///		<para>
-		///			MessagePack-RPC for CLI runtime does not propagate <see cref="DebugInformation"/> for remote endpoint.
+		///			MessagePack-RPC for CLI runtime does not propagate <see cref="RpcException.DebugInformation"/> for remote endpoint.
 		///			So you should specify some error handler to instrument it (e.g. logging handler).
 		///		</para>
 		/// </remarks>		
@@ -87,7 +87,7 @@ namespace MsgPack.Rpc.Protocols
 		///			And then, user-friendly, safe message should be specified to <paramref name="message"/> like 'Internal Error."
 		///		</para>
 		///		<para>
-		///			MessagePack-RPC for CLI runtime does not propagate <see cref="DebugInformation"/> for remote endpoint.
+		///			MessagePack-RPC for CLI runtime does not propagate <see cref="RpcException.DebugInformation"/> for remote endpoint.
 		///			So you should specify some error handler to instrument it (e.g. logging handler).
 		///		</para>
 		/// </remarks>
@@ -112,11 +112,11 @@ namespace MsgPack.Rpc.Protocols
 		/// <param name="rpcError">
 		///		Metadata of error. If you specify null, <see cref="RpcError.RemoteRuntimeError"/> is used.
 		///	</param>
-		/// <param name="unpackedException">
+		/// <param name="message">
 		///		Exception data from remote MessagePack-RPC server.
 		///	</param>
 		/// <exception cref="SerializationException">
-		///		Cannot deserialize instance from <paramref name="unpackedException"/>.
+		///		Cannot deserialize instance from <paramref name="message"/>.
 		/// </exception>
 		internal RpcTransportException( RpcError rpcError, MessagePackObject message )
 			: base( rpcError, message ) { }

@@ -71,7 +71,7 @@ namespace MsgPack.Rpc.Dispatch
 			var targetMethod = MethodBase.GetMethodFromHandle( handle ) as MethodInfo;
 			if ( targetMethod == null )
 			{
-				throw new RpcMissingMethodException( RpcError.NoMethodError, methodName, "Specified member is not method.", MethodBase.GetMethodFromHandle( handle ).ToString() );
+				throw new RpcMissingMethodException( methodName, "Specified member is not method.", MethodBase.GetMethodFromHandle( handle ).ToString() );
 			}
 
 			var invoker = this._invokerProvider.GetInvoker( targetMethod );
@@ -151,15 +151,15 @@ namespace MsgPack.Rpc.Dispatch
 				}
 				catch ( MissingMethodException ex )
 				{
-					throw new RpcMissingMethodException( RpcError.NoMethodError, methodName, RpcError.NoMethodError.DefaultMessage, ex.ToString(), ex );
+					throw new RpcMissingMethodException( methodName, RpcError.NoMethodError.DefaultMessage, ex.ToString(), ex );
 				}
 				catch ( AmbiguousMatchException ex )
 				{
-					throw new RpcMissingMethodException( RpcError.NoMethodError, methodName, "Failed to find specified method due to overload resolution.", ex.ToString(), ex );
+					throw new RpcMissingMethodException( methodName, "Failed to find specified method due to overload resolution.", ex.ToString(), ex );
 				}
 				catch ( SecurityException ex )
 				{
-					throw new RpcMissingMethodException( RpcError.CallError, methodName, "Invalid method name.", ex.ToString(), ex );
+					throw new RpcMissingMethodException( methodName, "Invalid method name.", ex.ToString(), ex );
 				}
 
 				lockTaken = false;
