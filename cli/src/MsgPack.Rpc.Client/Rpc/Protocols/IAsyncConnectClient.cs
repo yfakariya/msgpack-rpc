@@ -46,8 +46,6 @@ namespace MsgPack.Rpc.Protocols
 		/// </value>
 		RpcSocketAsyncEventArgs SocketContext { get; }
 
-
-
 		/// <summary>
 		///		Invoked when connection is completed by error.
 		/// </summary>

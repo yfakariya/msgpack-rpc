@@ -165,7 +165,7 @@ namespace MsgPack.Rpc
 		/// <exception cref="InvalidOperationException">
 		///		<see cref="IsSuccess"/> is true.
 		/// </exception>
-		internal RpcException ToException()
+		public RpcException ToException()
 		{
 			if ( this.IsSuccess )
 			{

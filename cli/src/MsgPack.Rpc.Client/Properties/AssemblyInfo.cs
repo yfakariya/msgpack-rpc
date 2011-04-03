@@ -19,12 +19,17 @@
 #endregion -- License Terms --
 
 using System.Reflection;
+using System.Runtime.CompilerServices;
 
-[assembly: AssemblyTitle( "MessagePack^RPC for CLI(.NET/Mono) client" )]
+[assembly: AssemblyTitle( "MessagePack-RPC for CLI(.NET/Mono) client" )]
 [assembly: AssemblyDescription( "MessagePack-RPC for CLI(.NET/Mono) client library." )]
 [assembly: AssemblyConfiguration( "Experimental" )]
 [assembly: AssemblyCopyright( "Copyright © FUJIWARA, Yusuke 2010" )]
 
 // TODO: use script. Major = Informational-Major, Minor = Informational-Minor, Build = Epoc days from 2010/1/1, Revision = Epoc minutes from 00:00:00
 [assembly: AssemblyFileVersion( "0.1.0.0" )]
+
+#if DEBUG
+[assembly: InternalsVisibleTo( "MsgPack.Rpc.Client.UnitTest" )]
+#endif
 

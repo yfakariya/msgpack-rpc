@@ -42,11 +42,12 @@ namespace MsgPack.Rpc.Protocols
 			add
 			{
 				for (
-					EventHandler<RpcTransportErrorEventArgs> oldValue = this._transportError, newValue = null, currentValue = null;
+					EventHandler<RpcTransportErrorEventArgs> currentValue = this._transportError, newValue = null, oldValue = null;
 					oldValue != currentValue;
 					oldValue = currentValue
 				)
 				{
+					oldValue = currentValue;
 					newValue = Delegate.Combine( oldValue, value ) as EventHandler<RpcTransportErrorEventArgs>;
 					currentValue = Interlocked.CompareExchange( ref this._transportError, newValue, oldValue );
 				}
@@ -54,11 +55,12 @@ namespace MsgPack.Rpc.Protocols
 			remove
 			{
 				for (
-					EventHandler<RpcTransportErrorEventArgs> oldValue = this._transportError, newValue = null, currentValue = null;
+					EventHandler<RpcTransportErrorEventArgs> currentValue = this._transportError, newValue = null, oldValue = null;
 					oldValue != currentValue;
 					oldValue = currentValue
 				)
 				{
+					oldValue = currentValue;
 					newValue = Delegate.Remove( oldValue, value ) as EventHandler<RpcTransportErrorEventArgs>;
 					currentValue = Interlocked.CompareExchange( ref this._transportError, newValue, oldValue );
 				}
@@ -135,7 +137,7 @@ namespace MsgPack.Rpc.Protocols
 		/// <exception cref="SocketException">
 		///		There are no event handlers registered.
 		/// </exception>
-		public void HandleError( SocketAsyncOperation operation, SocketError error )
+		protected void HandleError( SocketAsyncOperation operation, SocketError error )
 		{
 			if ( error == System.Net.Sockets.SocketError.Success )
 			{
@@ -157,7 +159,7 @@ namespace MsgPack.Rpc.Protocols
 		/// <exception cref="SocketException">
 		///		There are no event handlers registered.
 		/// </exception>
-		public void HandleError( SocketAsyncOperation operation, int messageId, SocketError error )
+		protected void HandleError( SocketAsyncOperation operation, int messageId, SocketError error )
 		{
 			if ( error == System.Net.Sockets.SocketError.Success )
 			{
@@ -178,7 +180,7 @@ namespace MsgPack.Rpc.Protocols
 		/// <exception cref="RpcException">
 		///		There are no event handlers registered.
 		/// </exception>
-		public void HandleError( RpcTransportOperation operation, RpcErrorMessage rpcError )
+		protected void HandleError( RpcTransportOperation operation, RpcErrorMessage rpcError )
 		{
 			if ( rpcError.IsSuccess )
 			{
@@ -200,7 +202,7 @@ namespace MsgPack.Rpc.Protocols
 		/// <exception cref="RpcException">
 		///		There are no event handlers registered.
 		/// </exception>
-		public void HandleError( RpcTransportOperation operation, int messageId, RpcErrorMessage rpcError )
+		protected void HandleError( RpcTransportOperation operation, int messageId, RpcErrorMessage rpcError )
 		{
 			if ( rpcError.IsSuccess )
 			{

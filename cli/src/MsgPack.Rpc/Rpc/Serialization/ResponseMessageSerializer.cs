@@ -133,22 +133,12 @@ namespace MsgPack.Rpc.Serialization
 				if ( context.Exception == null )
 				{
 					packer.PackNull();
-					packer.Pack( context.ReturnValue );
+					packer.PackObject( context.ReturnValue );
 				}
 				else
 				{
 					packer.PackString( context.Exception.RpcError.Identifier );
 					packer.Pack( context.Exception.GetExceptionMessage( false ) );
-					//packer.PackMapHeader( context.Exception.DebugInformation == null ? 2 : 3 );
-					//packer.PackString( "ErrorCode" );
-					//packer.Pack( context.Exception.RpcError.ErrorCode );
-					//packer.PackString( "Description" );
-					//packer.PackString( context.Exception.Message );
-					//if ( context.Exception.DebugInformation != null )
-					//{
-					//    packer.PackString( "DebugInformation" );
-					//    packer.PackString( context.Exception.DebugInformation );
-					//}
 				}
 			}
 		}

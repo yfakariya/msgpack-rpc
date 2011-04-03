@@ -61,10 +61,11 @@ namespace MsgPack.Rpc.Protocols
 				);
 		}
 
-		protected override void OnReceive( ReceivingContext context, ResponseMessage response, RpcErrorMessage error )
+		protected override void OnReceiveCore( ReceivingContext context, ResponseMessage response, RpcErrorMessage error )
 		{
-			base.OnReceive( context, response, error );
+			base.OnReceiveCore( context, response, error );
 			this._connectionPool.Return( context.SocketContext );
+			// FIXME: Return to buffer pool.
 		}
 	}
 }

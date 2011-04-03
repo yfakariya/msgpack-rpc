@@ -73,7 +73,7 @@ namespace MsgPack.Rpc.Serialization
 		}
 
 #warning TODO: impl
-		public int Remaining { get { throw new NotImplementedException(); } }
+		public long Remaining { get { return this._length - this._position - 1; } }
 
 		/// <summary>
 		///		Get <see cref="Iterator"/> to enumerate content of this buffer.

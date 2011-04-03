@@ -19,24 +19,15 @@
 #endregion -- License Terms --
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using NUnit.Framework;
-using System.Diagnostics.Contracts;
+using MsgPack.Collections;
 
-[CLSCompliant( false )]
-[SetUpFixture]
-public sealed class _SetUpFixture
+namespace MsgPack.Rpc.Serialization
 {
-	[SetUp]
-	public void SetupCurrentNamespaceTests()
+	public static class RpcOutputBufferTestUtilities
 	{
-		Contract.ContractFailed +=
-			( sender, e ) =>
-			{
-				// Assert.Fail( "Contract failed.{0}{3}{0}Type:{1}{0}Condition:{2}{0}Exception:{4}", Environment.NewLine, e.FailureKind, e.Condition, e.Message, e.OriginalException );
-				e.SetUnwind();
-			};
+		public static ChunkBuffer DebugGetChunk(this RpcOutputBuffer source)
+		{
+			return source.Chunks;
+		}
 	}
 }

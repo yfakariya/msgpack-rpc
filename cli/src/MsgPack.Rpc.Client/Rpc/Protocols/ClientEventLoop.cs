@@ -77,6 +77,11 @@ namespace MsgPack.Rpc.Protocols
 		protected ClientEventLoop( RpcClientOptions options, EventHandler<RpcTransportErrorEventArgs> errorHandler, CancellationTokenSource cancellationTokenSource )
 			: base( errorHandler )
 		{
+			if ( options == null )
+			{
+				throw new ArgumentNullException( "options" );
+			}
+
 			this._options = options;
 			this._cancellationTokenSource = cancellationTokenSource ?? new CancellationTokenSource();
 		}
@@ -109,14 +114,34 @@ namespace MsgPack.Rpc.Protocols
 
 		#region -- Context Factory --
 
+		/// <summary>
+		///		Create <see cref="RpcSocketAsyncEventArgs"/> which has callbacks to this instance.
+		/// </summary>
+		/// <param name="remoteEndPoint">
+		///		<see cref="EndPoint"/> to communicate.
+		/// </param>
+		/// <returns>
+		///		New <see cref="RpcSocketAsyncEventArgs"/> which has callbacks to this instance.
+		/// </returns>
+		/// <exception cref="ArgumentNullException">
+		///		<paramref name="remoteEndPoint"/> is null.
+		/// </exception>
 		public RpcSocketAsyncEventArgs CreateSocketContext( EndPoint remoteEndPoint )
 		{
+			if ( remoteEndPoint == null )
+			{
+				throw new ArgumentNullException( "remoteEndPoint" );
+			}
+
+			Contract.EndContractBlock();
+
 			return
 				new RpcSocketAsyncEventArgs(
 					( e, completedSynchronously ) => BridgeTo<ConnectingContext>( e, completedSynchronously, this.OnConnected ),
 					null,
 					( e, completedSynchronously ) => BridgeTo<SendingContext>( e, completedSynchronously, this.OnSent ),
 					( e, completedSynchronously ) => BridgeTo<ReceivingContext>( e, completedSynchronously, this.OnReceived ),
+					( e, socketError, completedSynchronously ) => BridgeTo<ConnectingContext>( e, socketError, completedSynchronously, this.OnConnectError ),
 					this.HandleError,
 					this.CancellationToken,
 					ClientServices.SocketFactory
@@ -138,6 +163,23 @@ namespace MsgPack.Rpc.Protocols
 			Contract.Assume( context != null );
 			e.UserToken = null;
 			handler( context, completedSynchronously );
+		}
+
+		/// <summary>
+		///		Bridge callback of <see cref="RpcSocketAsyncEventArgs"/> to method of this class.
+		/// </summary>
+		/// <typeparam name="T">Expected concrete type of <see cref="RpcSocketAsyncEventArgs"/>.</typeparam>
+		/// <param name="e">Argument of callback.</param>
+		/// <param name="handler">Handler of this class.</param>
+		private static void BridgeTo<T>( RpcSocketAsyncEventArgs e, SocketError socketError, bool completedSynchronously, Action<T, SocketError,bool> handler )
+		{
+			Contract.Assume( e != null, "e != null, handler:" + handler.Method );
+			Contract.Assume( e.UserToken != null, "e.UserToken(<" + typeof( T ).FullName + "> is null. handler:" + handler.Method );
+			Contract.Assume( e.UserToken is T, "e.UserToken is " + typeof( T ) + ", Actual:" + e.UserToken.GetType().FullName + " handler:" + handler.Method );
+			var context = ( T )e.UserToken;
+			Contract.Assume( context != null );
+			e.UserToken = null;
+			handler( context, socketError, completedSynchronously );
 		}
 
 		#endregion -- Context Factory --
@@ -193,42 +235,33 @@ namespace MsgPack.Rpc.Protocols
 		/// </remarks>
 		protected virtual void OnConnected( ConnectingContext context, bool completedSynchronously )
 		{
-			if ( context == null )
-			{
-				throw new ArgumentNullException( "context" );
-			}
-
-			Contract.EndContractBlock();
-
 			context.Client.OnConnected( context, completedSynchronously, context.UserAsyncState );
+		}
 
-			//Contract.Assume( context.Transport.SessionContext != null );
-
-			//var receivingContext =
-			//    new ReceivingContext(
-			//        context.Transport.SessionContext,
-			//        new RpcInputBuffer(
-			//            ChunkBuffer.CreateDefault(),
-			//            ( buffer, state ) => this.FeedMore( state as RpcSocketAsyncEventArgs ),
-			//            context.SocketContext
-			//        )
-			//    );
-
-			//this.RegisterTransportReceiveCallback(
-			//    context.Transport,
-			//    receivingContext
-			//);
-
-			//if ( !receivingContext.SocketContext.ConnectSocket.ReceiveAsync( receivingContext.SocketContext ) )
-			//{
-			//    this.OnReceived( receivingContext, true );
-			//}
+		protected virtual void OnConnectError( ConnectingContext context, SocketError socketError, bool completedSynchronously )
+		{
+#warning More strict mapping.
+			context.Client.OnConnectError( RpcError.TransportError, new SocketException( ( int )socketError ), completedSynchronously, context.UserAsyncState );
 		}
 
 		#endregion -- Connect --
 
 		#region -- Send --
 
+		/// <summary>
+		///		Send connection oriented message via this event loop.
+		/// </summary>
+		/// <param name="context">
+		///		Context information of this round trip.
+		/// </param>
+		/// <exception cref="ArgumentNullException">
+		///		<paramref name="context"/> is null.
+		/// </exception>
+		/// <remarks>
+		///		If message ID is assigned then <see cref="Receive"/> method will be called and eventually <see cref="SendingContext.OnMessageSent"/> will be called.
+		///		If message ID is not assigned then <see cref="SendingContext.OnMessageSent"/> will be called immedeately.
+		///		If sending error is occurred then <see cref="SendingContext.OnMessageSent"/> will be called immedeately with error.
+		/// </remarks>
 		public void Send( SendingContext context )
 		{
 			if ( context == null )
@@ -243,8 +276,31 @@ namespace MsgPack.Rpc.Protocols
 			this.SendCore( context );
 		}
 
+		/// <summary>
+		///		Send connection oriented message via this event loop.
+		/// </summary>
+		/// <param name="context">
+		///		Context information of this round trip. This object will not be null.
+		/// </param>
+		/// <remarks>
+		///		If message ID is assigned then <see cref="Receive"/> method will be called and eventually <see cref="SendingContext.OnMessageSent"/> will be called.
+		///		If message ID is not assigned then <see cref="SendingContext.OnMessageSent"/> will be called immedeately.
+		///		If sending error is occurred then <see cref="SendingContext.OnMessageSent"/> will be called immedeately with error.
+		/// </remarks>
 		protected abstract void SendCore( SendingContext context );
 
+		/// <summary>
+		///		Called when asynchronous sending operation is completed.
+		/// </summary>
+		/// <param name="context">
+		///		Context information of completed sending.
+		///	</param>
+		/// <param name="completedSynchronously">
+		///		When operation completed synchronously then true, otherwise false.
+		/// </param>
+		/// <exception cref="ArgumentNullException">
+		///		<paramref name="context"/> is null.
+		/// </exception>
 		protected virtual void OnSent( SendingContext context, bool completedSynchronously )
 		{
 			if ( context == null )
@@ -268,16 +324,8 @@ namespace MsgPack.Rpc.Protocols
 				return;
 			}
 
-			//var buffer = context.SocketContext.BufferList as IDisposable;
-			//if ( buffer != null )
-			//{
-			//    try { }
-			//    finally
-			//    {
-			//        context.SocketContext.BufferList = null;
-			//        buffer.Dispose();
-			//    }
-			//}
+			// TODO: Callback transport to clean up sending buffer.
+			//context.SessionContext.Transport.OnSent();
 
 			if ( context.MessageId == null )
 			{
@@ -285,6 +333,7 @@ namespace MsgPack.Rpc.Protocols
 			}
 			else
 			{
+				// TODO: Borrow buffer from Transport.(and Receive should be called via Transport.Receive.)
 				this.Receive(
 					new ReceivingContext(
 						context.SessionContext,
@@ -298,7 +347,6 @@ namespace MsgPack.Rpc.Protocols
 				);
 			}
 		}
-
 
 		public void SendTo( SendingContext context )
 		{
@@ -334,27 +382,8 @@ namespace MsgPack.Rpc.Protocols
 
 		protected virtual void OnReceived( ReceivingContext context, bool completedSynchronously )
 		{
-			if ( context == null )
-			{
-				throw new ArgumentNullException( "context" );
-			}
-
-			Contract.EndContractBlock();
-
-			// TODO: transport should dispose Buffer .
-			//var buffer = context.SocketContext.BufferList as IDisposable;
-			//if ( buffer != null )
-			//{
-			//    try { }
-			//    finally
-			//    {
-			//        context.SocketContext.BufferList = null;
-			//        buffer.Dispose();
-			//    }
-			//}
+			// nop.
 		}
-
-		protected abstract BufferFeeding FeedMore( RpcSocketAsyncEventArgs context );
 
 		public void ReceiveFrom( ReceivingContext context )
 		{
@@ -371,5 +400,8 @@ namespace MsgPack.Rpc.Protocols
 		protected abstract void ReceiveFromCore( ReceivingContext context );
 
 		#endregion  -- Receive --
+
+
+		protected abstract BufferFeeding FeedMore( RpcSocketAsyncEventArgs context );
 	}
 }

@@ -90,10 +90,16 @@ namespace MsgPack.Rpc.TestDoubles
 			{
 				case SocketAsyncOperation.Accept:
 				{
+					if ( e.SocketError == SocketError.OperationAborted )
+					{
+						// Shutdown.
+						return;
+					}
+
 					if ( e.SocketError != SocketError.Success )
 					{
-						this.OnReceived( new ServerMockReceivedEventArgs( e ) );
-						return;
+						Console.Error.WriteLine( "{0}:{1}", e.LastOperation, e.SocketError );
+						throw new SocketException( ( int )e.SocketError );
 					}
 					else
 					{

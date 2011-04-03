@@ -50,7 +50,7 @@ namespace MsgPack.Rpc.Protocols
 		protected sealed override void OnConnected( ConnectingContext context, bool completedSynchronously )
 		{
 			if ( context.Client.SocketContext.ConnectByNameError != null )
-			{
+			{ 
 				// error 
 				context.Client.OnConnectError(
 					RpcError.NetworkUnreacheableError,
@@ -125,6 +125,7 @@ namespace MsgPack.Rpc.Protocols
 			}
 		}
 
+		// todo: pull up
 		protected sealed override void OnReceived( ReceivingContext context, bool completedSynchronously )
 		{
 			if ( context.SocketContext.SocketError != SocketError.Success )
@@ -135,7 +136,8 @@ namespace MsgPack.Rpc.Protocols
 
 			if ( !context.CancellationToken.IsCancellationRequested )
 			{
-				context.SessionContext.Transport.Receive( context );
+				// FIXME: Feeding.
+				context.SessionContext.TransportReceiveHandler.OnReceive( context );
 			}
 
 			base.OnReceived( context, completedSynchronously );
@@ -143,9 +145,12 @@ namespace MsgPack.Rpc.Protocols
 
 		protected sealed override BufferFeeding FeedMore( RpcSocketAsyncEventArgs context )
 		{
+			Contract.Assume( context != null );
+			Contract.Assume( context.UserToken is ReceivingContext );
+
 			var receivingContext = ( ReceivingContext )context.UserToken;
 
-			// FIXME: Use async receive
+			// TODO: Use async receive?
 			if ( receivingContext.ReceivingBuffer.Remaining > 0 )
 			{
 				var received = context.ConnectSocket.Receive( context );
@@ -153,7 +158,7 @@ namespace MsgPack.Rpc.Protocols
 			}
 			else
 			{
-				// FIXME: Buffer recycling
+				// TODO: Buffer recycling
 				var newBuffer = ChunkBuffer.CreateDefault();
 				var received = context.ConnectSocket.Receive( context );
 				return new BufferFeeding( received, newBuffer );

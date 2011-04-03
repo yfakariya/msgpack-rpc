@@ -50,9 +50,13 @@ namespace MsgPack.Rpc.Serialization
 			get { return this._chunks; }
 		}
 
-		internal RpcOutputBuffer( ChunkBuffer chunkBuffer )
+		public RpcOutputBuffer( ChunkBuffer chunkBuffer )
 		{
-			Contract.Assume( chunkBuffer != null );
+			if ( chunkBuffer == null )
+			{
+				throw new ArgumentNullException( "chunkBuffer" );
+			}
+
 			this._chunks = chunkBuffer;
 		}
 

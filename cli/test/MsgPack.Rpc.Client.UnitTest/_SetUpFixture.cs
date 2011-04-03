@@ -25,16 +25,18 @@ using System.Text;
 using NUnit.Framework;
 using System.Diagnostics.Contracts;
 
-namespace MsgPack
+// This must be in global namespace.
+[SetUpFixture]
+public sealed class _SetUpFixture
 {
-	[CLSCompliant( false )]
-	[SetUpFixture]
-	public sealed class _SetUpFixture
+	[SetUp]
+	public void SetupCurrentNamespaceTests()
 	{
-		[SetUp]
-		public void SetupCurrentNamespaceTests()
+		Contract.ContractFailed += ( sender, e ) =>
 		{
-			Contract.ContractFailed += ( sender, e ) => e.SetUnwind();
-		}
+			e.SetHandled();
+			e.SetUnwind();
+			Assert.Fail( "Contract failed.{0}{3}{0}Type:{1}{0}Condition:{2}{0}Exception:{4}", Environment.NewLine, e.FailureKind, e.Condition, e.Message, e.OriginalException );
+		};
 	}
 }

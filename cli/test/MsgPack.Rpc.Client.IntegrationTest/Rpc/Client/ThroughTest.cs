@@ -41,7 +41,7 @@ namespace MsgPack.Rpc.Client
 		public void TestTcpSend()
 		{
 			using ( var server = ServerMock.CreateTcp( 57129, 8192 ) )
-			using( var serverDone = new ManualResetEventSlim())
+			using ( var serverDone = new ManualResetEventSlim() )
 			{
 				Exception exceptionOnServer = null;
 				int? requestId = null;
@@ -90,8 +90,8 @@ namespace MsgPack.Rpc.Client
 					RpcClient client = RpcClient.CreateTcp( new IPEndPoint( IPAddress.Loopback, 57129 ), eventLoop, options );
 					var ar = client.BeginCall( "Test", new object[] { true, "Test", new int[] { 1, 2, 3 } }, null, null );
 
-					serverDone.Wait(); 
-					
+					serverDone.Wait();
+
 					if ( exceptionOnServer != null )
 					{
 						throw new AssertionException( "Server error.", exceptionOnServer );

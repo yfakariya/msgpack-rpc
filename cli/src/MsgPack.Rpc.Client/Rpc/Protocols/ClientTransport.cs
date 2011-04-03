@@ -33,7 +33,7 @@ namespace MsgPack.Rpc.Protocols
 	/// <summary>
 	///		Define interface of client protocol binding.
 	/// </summary>
-	public abstract class ClientTransport : IDisposable
+	public abstract class ClientTransport : IDisposable, ITransportReceiveHandler
 	{
 		private const int _defaultChunkSize = 32 * 1024;
 		private readonly RequestMessageSerializer _requestSerializer;
@@ -52,22 +52,6 @@ namespace MsgPack.Rpc.Protocols
 		{
 			get { return this._chunkSize; }
 		}
-
-		//private ClientSessionContext _sessionContext;
-
-		//public ClientSessionContext SessionContext
-		//{
-		//    get { return this._sessionContext; }
-		//    protected set
-		//    {
-		//        if ( value == null )
-		//        {
-		//            throw new ArgumentNullException( "value" );
-		//        }
-
-		//        this._sessionContext = value;
-		//    }
-		//}
 
 		private readonly CountdownEvent _sessionTableLatch = new CountdownEvent( 1 );
 		private readonly TimeSpan _drainTimeout;
@@ -109,12 +93,7 @@ namespace MsgPack.Rpc.Protocols
 			this._sessionTableLatch.Signal();
 			this._sessionTableLatch.Wait( this._drainTimeout, this.EventLoop.CancellationToken );
 		}
-
-		//public virtual SendingContext CreateNewSendingContext( int? messageId, Action<SendingContext, Exception, bool> onMessageSent )
-		//{
-		//    return this._eventLoop.CreateSendingContext( this, messageId, onMessageSent );
-		//}
-
+		
 		public void Send( MessageType type, int? messageId, String method, IList<object> arguments, Action<SendingContext, Exception, bool> onMessageSent, IResponseHandler responseHandler )
 		{
 			switch ( type )
@@ -183,26 +162,18 @@ namespace MsgPack.Rpc.Protocols
 
 		protected abstract void SendCore( SendingContext context );
 
-		/// <summary>
-		/// 
-		/// </summary>
-		/// <param name="context"></param>
-		/// <returns>If success to derialize from buffer then true. If buffer does not have enough data to deserialize then false.</returns>
-		public void Receive( ReceivingContext context )
+		void ITransportReceiveHandler.OnReceive( ReceivingContext context )
 		{
-			if ( context == null )
-			{
-				throw new ArgumentNullException( "context" );
-			}
-
-			Contract.EndContractBlock();
-
 			ResponseMessage result;
+			// FIXME: Feeding deserliaztion.
+			//	If data is not enough, Deserialize return null.
+			//  So this method return false, caller(EventLoop) retrieve more data.
+			//  Feeding callback is NOT straight forward.
 			var error = this._responseSerializer.Deserialize( context.ReceivingBuffer, out result );
-			this.OnReceive( context, result, error );
+			this.OnReceiveCore( context, result, error );
 		}
 
-		protected virtual void OnReceive( ReceivingContext context, ResponseMessage response, RpcErrorMessage error )
+		protected virtual void OnReceiveCore( ReceivingContext context, ResponseMessage response, RpcErrorMessage error )
 		{
 			IResponseHandler handler;
 			bool removed;

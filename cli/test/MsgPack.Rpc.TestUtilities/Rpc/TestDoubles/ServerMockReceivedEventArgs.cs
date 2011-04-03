@@ -59,25 +59,7 @@ namespace MsgPack.Rpc.TestDoubles
 				buffer.Feed( new ArraySegment<byte>( this._context.Buffer, this._context.Offset, this._context.BytesTransferred ) );
 				using ( RpcInputBuffer rpcBuffer = new RpcInputBuffer( buffer, ( _0, _1 ) => new BufferFeeding( 0 ), null ) )
 				{
-					RequestMessage message;
-					var error =
-						new RequestMessageSerializer(
-								Arrays<IFilterProvider<RequestMessageSerializationFilter>>.Empty,
-								Arrays<IFilterProvider<SerializedMessageFilter<MessageSerializationContext>>>.Empty,
-								Arrays<IFilterProvider<SerializedMessageFilter<MessageDeserializationContext>>>.Empty,
-								Arrays<IFilterProvider<RequestMessageDeserializationFilter>>.Empty,
-								null
-						).Deserialize( rpcBuffer, out message );
-					if ( error.IsSuccess )
-					{
-						this._request = message;
-						return message;
-					}
-					else
-					{
-						this._deserializationError = error.ToException();
-						throw this._deserializationError;
-					}
+					return SerializationUtility.DeserializeRequestOrNotification( rpcBuffer );
 				}
 			}
 		}
@@ -94,24 +76,13 @@ namespace MsgPack.Rpc.TestDoubles
 				throw new InvalidOperationException();
 			}
 
+#warning なぜかチャンクが1バイトx多数になってる。。。
 			using ( var buffer = GCChunkBuffer.CreateDefault() )
 			{
-				using ( RpcOutputBuffer rpcBuffer = new RpcOutputBuffer( buffer ) ) 
+				using ( RpcOutputBuffer rpcBuffer = SerializationUtility.SerializeResponse( id.Value, message ) )
 				{
-					var error =
-						new ResponseMessageSerializer(
-								Arrays<IFilterProvider<ResponseMessageSerializationFilter>>.Empty,
-								Arrays<IFilterProvider<SerializedMessageFilter<MessageSerializationContext>>>.Empty,
-								Arrays<IFilterProvider<SerializedMessageFilter<MessageDeserializationContext>>>.Empty,
-								Arrays<IFilterProvider<ResponseMessageDeserializationFilter>>.Empty,
-								null
-						).Serialize( id.Value, message, false, null, rpcBuffer );
-					if ( !error.IsSuccess )
-					{
-						throw error.ToException();
-					}
-
-					this._context.AcceptSocket.Send( rpcBuffer.ReadBytes().ToArray() );
+					var bytesToSend = rpcBuffer.ReadBytes().ToArray();
+					this._context.AcceptSocket.Send( bytesToSend );
 				}
 			}
 		}
@@ -130,21 +101,8 @@ namespace MsgPack.Rpc.TestDoubles
 
 			using ( var buffer = GCChunkBuffer.CreateDefault() )
 			{
-				using ( RpcOutputBuffer rpcBuffer = new RpcOutputBuffer( buffer ) )
+				using ( RpcOutputBuffer rpcBuffer = SerializationUtility.SerializeResponse( id.Value, message ) )
 				{
-					var error =
-						new ResponseMessageSerializer(
-								Arrays<IFilterProvider<ResponseMessageSerializationFilter>>.Empty,
-								Arrays<IFilterProvider<SerializedMessageFilter<MessageSerializationContext>>>.Empty,
-								Arrays<IFilterProvider<SerializedMessageFilter<MessageDeserializationContext>>>.Empty,
-								Arrays<IFilterProvider<ResponseMessageDeserializationFilter>>.Empty,
-								null
-						).Serialize( id.Value, null, false, message, rpcBuffer );
-					if ( !error.IsSuccess )
-					{
-						throw error.ToException();
-					}
-
 					this._context.AcceptSocket.Send( rpcBuffer.ReadBytes().ToArray() );
 				}
 			}

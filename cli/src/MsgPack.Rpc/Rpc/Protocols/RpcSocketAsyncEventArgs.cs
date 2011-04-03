@@ -36,7 +36,9 @@ namespace MsgPack.Rpc.Protocols
 		private readonly Action<RpcSocketAsyncEventArgs, bool> _onSent;
 		private readonly Action<RpcSocketAsyncEventArgs, bool> _onReceived;
 		private readonly Action<SocketAsyncOperation, SocketError> _onError;
-		
+		private readonly Action<RpcSocketAsyncEventArgs, SocketError, bool> _onConnectError;
+
+
 		private RpcSocket _acceptSocket;
 
 		/// <summary>
@@ -142,6 +144,7 @@ namespace MsgPack.Rpc.Protocols
 			Action<RpcSocketAsyncEventArgs, bool> onAcceptted,
 			Action<RpcSocketAsyncEventArgs, bool> onSent,
 			Action<RpcSocketAsyncEventArgs, bool> onReceived,
+			Action<RpcSocketAsyncEventArgs, SocketError, bool> onConnectError,
 			Action<SocketAsyncOperation, SocketError> onError,
 			CancellationToken cancellationToken,
 			Func<Socket, RpcSocket> socketFactory
@@ -155,6 +158,7 @@ namespace MsgPack.Rpc.Protocols
 			Contract.EndContractBlock();
 
 			this._onConnected = onConnected;
+			this._onConnectError = onConnectError;
 			this._onAcceptted = onAcceptted;
 			this._onSent = onSent;
 			this._onReceived = onReceived;
@@ -171,13 +175,27 @@ namespace MsgPack.Rpc.Protocols
 		{
 			if ( e.SocketError != System.Net.Sockets.SocketError.Success )
 			{
-				var handler = this._onError;
-				if ( handler == null )
+				if ( e.LastOperation == SocketAsyncOperation.Connect )
 				{
-					throw new SocketException( ( int )e.SocketError );
+					var handler = this._onConnectError; ;
+					if ( handler == null )
+					{
+						throw new SocketException( ( int )e.SocketError );
+					}
+
+					handler( this, e.SocketError, false );
+				}
+				else
+				{
+					var handler = this._onError;
+					if ( handler == null )
+					{
+						throw new SocketException( ( int )e.SocketError );
+					}
+
+					handler( e.LastOperation, e.SocketError );
 				}
 
-				handler( e.LastOperation, e.SocketError );
 				return;
 			}
 
@@ -246,7 +264,7 @@ namespace MsgPack.Rpc.Protocols
 		/// </returns>
 		public bool SendAsync()
 		{
-			Contract.Assume( this._connectSocket != null );
+			Contract.Assume( this.ConnectSocket != null );
 			return this._connectSocket.SendAsync( this );
 		}
 
@@ -278,7 +296,7 @@ namespace MsgPack.Rpc.Protocols
 		/// </returns>
 		public bool ReceiveAsync()
 		{
-			Contract.Assume( this._connectSocket != null );
+			Contract.Assume( this.ConnectSocket != null );
 			return this._connectSocket.ReceiveAsync( this );
 		}
 
