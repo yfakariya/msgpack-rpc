@@ -196,10 +196,6 @@ namespace MessagePack.Rpc.Protocols
 						};
 					target.Connect( connectContext );
 					Assert.IsTrue( connectCompleted.Wait( 5000 ) );
-					if ( errorOnTest != null )
-					{
-						Assert.Fail( errorOnTest.ToString() );
-					}
 					if ( globalError != null )
 					{
 						Assert.Fail( globalError.ToString() );
@@ -208,7 +204,6 @@ namespace MessagePack.Rpc.Protocols
 					Assert.AreEqual( 0, connected );
 					Assert.NotNull( errorOnTest );
 					Assert.IsInstanceOf<SocketException>( errorOnTest, errorOnTest.ToString() );
-					socket.Shutdown( SocketShutdown.Both );
 				}
 			}
 		}
@@ -216,114 +211,21 @@ namespace MessagePack.Rpc.Protocols
 		[Test]
 		public void TestSendAndReceive()
 		{
-			Exception globalError = null;
-			foreach ( var target in
-				CreateTestTargets(
-					() => new RpcClientOptions(),
-					() => new EventHandler<RpcTransportErrorEventArgs>( ( sender, e ) =>
-					{
-						globalError = e.RpcError.Value.ToException();
-						return;
-					} ),
-					() => null
-				) )
-			{
-				using ( var socket
-					= new Socket( AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp ) )
-				using ( var server = ServerMock.CreateTcp( 57129, 8192 ) )
-				using ( var connectCompleted = new ManualResetEventSlim() )
-				using ( var receiveCompleted = new ManualResetEventSlim() )
-				{
-					server.Received +=
-						( sender, e ) =>
-						{
-							Console.WriteLine( "Received" );
-							Assert.AreEqual( "Test", e.GetRequest().Method );
-							e.Reply( 1, "OK" );
-						};
-					var socketContext = target.CreateSocketContext( new IPEndPoint( IPAddress.Loopback, 57129 ) );
-					var connectClientMock = new AsyncConnectClientMock( socket, socketContext );
-					connectClientMock.Connected +=
-						( context, completedSynchronously, asyncState ) =>
-						{
-							connectCompleted.Set();
-						};
-					Exception errorOnTest = null;
-					connectClientMock.ConnectError +=
-						( context, error, completedSynchronously, asyncState ) =>
-						{
-							errorOnTest = error;
-							connectCompleted.Set();
-						};
-					target.Connect( new ConnectingContext( connectClientMock, null ) );
-					Assert.IsTrue( connectCompleted.Wait( 3000 ) );
-					if ( errorOnTest != null )
-					{
-						Assert.Fail( errorOnTest.ToString() );
-					}
-					if ( globalError != null )
-					{
-						Assert.Fail( globalError.ToString() );
-					}
-
-					Assert.IsNotNull( socketContext.ConnectSocket );
-					var receiverMock = new TransportReceiveHandlerMock();
-					MessagePackObject? returned = null;
-					receiverMock.Received +=
-						( receiveContext ) =>
-						{
-							var message = SerializationUtility.DeserializeResponse( receiveContext.ReceivingBuffer );
-							if ( message.Error != null )
-							{
-								errorOnTest = message.Error;
-							}
-							else
-							{
-								returned = message.ReturnValue;
-							}
-
-							receiveCompleted.Set();
-						};
-					var sendingContext =
-						new SendingContext(
-							new ClientSessionContext(
-								receiverMock,
-								socketContext
-							),
-							new RpcOutputBuffer( ChunkBuffer.CreateDefault() ),
-							1,
-							( _sendingContext, error, completedSynchronously ) =>
-							{
-								errorOnTest = error;
-							}
-						);
-					var requestBytes = CreateDefaultRequest();
-					sendingContext.SendingBuffer.OpenWriteStream().Write( requestBytes, 0, requestBytes.Length );
-					sendingContext.SocketContext.BufferList = sendingContext.SendingBuffer.DebugGetChunk();
-					target.Send( sendingContext );
-					Assert.IsTrue( receiveCompleted.Wait( 3000 ), "Timeout" );
-					Assert.IsTrue( returned.HasValue );
-					if ( errorOnTest != null )
-					{
-						Assert.Fail( errorOnTest.ToString() );
-					}
-					if ( globalError != null )
-					{
-						Assert.Fail( globalError.ToString() );
-					}
-
-					Assert.AreEqual( "OK", returned.Value.AsString() );
-					socket.Shutdown( SocketShutdown.Both );
-				}
-			}
+			TestSendAndReceiveCore( 8, 1, "OK" );
 		}
 
+		[Test]
 		public void TestSendAndReceive_NeedsFeedMore()
+		{
+			TestSendAndReceiveCore( 8, 1, "LongLongLongMessage" );
+		}
+
+		private static void TestSendAndReceiveCore( int bufferSegmentSize, int bufferSegmentCount, String messageToSend )
 		{
 			Exception globalError = null;
 			foreach ( var target in
 				CreateTestTargets(
-					() => new RpcClientOptions(),
+					() => new RpcClientOptions() { BufferSegmentSize = bufferSegmentSize, BufferSegmentCount = bufferSegmentCount },
 					() => new EventHandler<RpcTransportErrorEventArgs>( ( sender, e ) =>
 					{
 						globalError = e.RpcError.Value.ToException();
@@ -343,8 +245,7 @@ namespace MessagePack.Rpc.Protocols
 						{
 							Console.WriteLine( "Received" );
 							Assert.AreEqual( "Test", e.GetRequest().Method );
-							// Currently, sender allocate minimum buffer and use it to receive response.
-							e.Reply( 1, "LongLongLongTestResult" );
+							e.Reply( 1, messageToSend );
 						};
 					var socketContext = target.CreateSocketContext( new IPEndPoint( IPAddress.Loopback, 57129 ) );
 					var connectClientMock = new AsyncConnectClientMock( socket, socketContext );
@@ -417,7 +318,7 @@ namespace MessagePack.Rpc.Protocols
 						Assert.Fail( globalError.ToString() );
 					}
 
-					Assert.AreEqual( "LongLongLongTestResult", returned.Value.AsString() );
+					Assert.AreEqual( messageToSend, returned.Value.AsString() );
 					socket.Shutdown( SocketShutdown.Both );
 				}
 			}
@@ -447,6 +348,11 @@ namespace MessagePack.Rpc.Protocols
 				{
 					handler( context );
 				}
+			}
+
+			public ChunkBuffer GetBufferForReceive( SendingContext context )
+			{
+				return context.SendingBuffer.DebugGetChunk();
 			}
 		}
 

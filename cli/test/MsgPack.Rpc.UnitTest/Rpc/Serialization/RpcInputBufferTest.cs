@@ -27,6 +27,7 @@ using MsgPack.Collections;
 
 namespace MsgPack.Rpc.Serialization
 {
+#warning NEED MORE TEST
 	[TestFixture]
 	[Timeout( 3000 )]
 	public sealed class RpcInputBufferTest

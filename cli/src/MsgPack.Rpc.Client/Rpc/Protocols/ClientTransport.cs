@@ -27,6 +27,7 @@ using System.Collections.Concurrent;
 using System.Threading;
 using System.Globalization;
 using MsgPack.Rpc.Serialization;
+using MsgPack.Collections;
 
 namespace MsgPack.Rpc.Protocols
 {
@@ -35,7 +36,25 @@ namespace MsgPack.Rpc.Protocols
 	/// </summary>
 	public abstract class ClientTransport : IDisposable, ITransportReceiveHandler
 	{
-		private const int _defaultChunkSize = 32 * 1024;
+		private const int _defaultSegmentSize = 32 * 1024;
+		private const int _defaultSegmentCount = 1;
+		
+		protected int InitialSegmentSize
+		{
+			get
+			{
+				return this.Options == null ? _defaultSegmentSize : ( this.Options.BufferSegmentSize ?? _defaultSegmentSize );
+			}
+		}
+
+		protected int InitialSegmentCount
+		{
+			get
+			{
+				return this.Options == null ? _defaultSegmentCount : ( this.Options.BufferSegmentCount ?? _defaultSegmentCount );
+			}
+		}
+
 		private readonly RequestMessageSerializer _requestSerializer;
 		private readonly ResponseMessageSerializer _responseSerializer;
 
@@ -46,12 +65,12 @@ namespace MsgPack.Rpc.Protocols
 			get { return this._eventLoop; }
 		}
 
-		private readonly int _chunkSize;
+		private readonly RpcClientOptions _options;
 
-		public int ChunkSize
+		public RpcClientOptions Options
 		{
-			get { return this._chunkSize; }
-		}
+			get { return this._options; }
+		} 
 
 		private readonly CountdownEvent _sessionTableLatch = new CountdownEvent( 1 );
 		private readonly TimeSpan _drainTimeout;
@@ -73,7 +92,8 @@ namespace MsgPack.Rpc.Protocols
 			this._requestSerializer = ClientServices.RequestSerializerFactory.Create( protocol, options );
 			this._responseSerializer = ClientServices.ResponseDeserializerFactory.Create( protocol, options );
 			this._drainTimeout = options == null ? TimeSpan.FromSeconds( 3 ) : options.DrainTimeout ?? TimeSpan.FromSeconds( 3 );
-			this._chunkSize = options == null ? _defaultChunkSize : options.ChunkSize ?? _defaultChunkSize;
+			this._options = options ?? new RpcClientOptions() ;
+			this._options.Freeze();
 		}
 
 		public void Dispose()
@@ -172,6 +192,13 @@ namespace MsgPack.Rpc.Protocols
 			var error = this._responseSerializer.Deserialize( context.ReceivingBuffer, out result );
 			this.OnReceiveCore( context, result, error );
 		}
+
+		ChunkBuffer ITransportReceiveHandler.GetBufferForReceive( SendingContext context )
+		{
+			return this.GetBufferForReceiveCore( context );
+		}
+
+		protected abstract ChunkBuffer GetBufferForReceiveCore( SendingContext context );
 
 		protected virtual void OnReceiveCore( ReceivingContext context, ResponseMessage response, RpcErrorMessage error )
 		{

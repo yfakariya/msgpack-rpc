@@ -31,7 +31,10 @@ var __typeName = "RpcClientOptions";
 var __options = new Dictionary<string, Tuple<string, string, string, string>> // Type of option, <summary>, <value>
 {
 	// TODO: Use streamed sending and remove this option.
-	{ "ChunkSize", Tuple.Create( "int?", "Get buffer chunk size of buffer in bytes.", "Set buffer chunk size of buffer in bytes.", "Buffer chunk size of buffer in bytes." ) },
+	{ "BufferSegmentSize", Tuple.Create( "int?", "Get buffer segment size of buffer in bytes.", "Set buffer segment size of buffer in bytes.", "Buffer chunk size of buffer in bytes." ) },
+	{ "BufferSegmentCount", Tuple.Create( "int?", "Get buffer segment count of buffer in bytes.", "Set buffer segment count of buffer in bytes.", "Buffer chunk size of buffer in bytes." ) },
+	{ "MinimumConnectionCount",   Tuple.Create( "int?", "Get minimum count of connection to preserve in pool.", "Set minimum count of connection to preserve in pool.", "Minimum count of connection to preserve in pool." ) },
+	{ "MaximumConnectionCount",  Tuple.Create( "int?", "Get maximum count of connection to hold in pool.", "Set maximum count of connection to hold in pool.", "Maximum count of connection to hold in pool." ) },
 	{ "ConnectingConcurrency", Tuple.Create( "int?", "Get concurrency of 'Connect' operation in <see cref=\"PollingClientEventLoop\"/>.", "Set concurrency of 'Connect' operation in <see cref=\"PollingClientEventLoop\"/>.", "Concurrency of 'Connect' operation in <see cref=\"PollingClientEventLoop\"/>." ) },
 	{ "SendingConcurrency",	   Tuple.Create( "int?", "Get concurrency of 'Send' operation in <see cref=\"PollingClientEventLoop\"/>.", "Set concurrency of 'Send' operation in <see cref=\"PollingClientEventLoop\"/>.", "Concurrency of 'Send' operation in <see cref=\"PollingClientEventLoop\"/>." ) },
 	{ "ReceivingConcurrency",  Tuple.Create( "int?", "Get concurrency of 'Receive' operation in <see cref=\"PollingClientEventLoop\"/>.", "Set concurrency of 'Receive' operation in <see cref=\"PollingClientEventLoop\"/>.", "Concurrency of 'Receive' operation in <see cref=\"PollingClientEventLoop\"/>." ) },
@@ -116,31 +119,24 @@ foreach( var __option in __options )
 		/// <value>
 		///		<#= __option.Value.Item4 #>
 		/// </value>
+		/// <exception cref="InvalidOperationException">You attempt to set the value when this instance is frozen.</exception>
 		public <#= __option.Value.Item1 #> <#= __option.Key #>
 		{
 			get
 			{
 				return this._<#= __option.Key #>;
 			}
-		}
-		
-		/// <summary>
-		///		<#= __option.Value.Item3 #>
-		/// </summary>
-		/// <param name="value">
-		///		<#= __option.Value.Item4 #>
-		/// </param>
-		/// <exception cref="InvalidOperationException">You attempt to set the value when this instance is frozen.</exception>
-		public void Set<#= __option.Key #>( <#= __option.Value.Item1 #> value )
-		{
-			if( this._isFrozen )
+			set
 			{
-				throw new InvalidOperationException( "This instance is frozen." );
+				if( this._isFrozen )
+				{
+					throw new InvalidOperationException( "This instance is frozen." );
+				}
+
+				Contract.EndContractBlock();
+
+				this._<#= __option.Key #> = value;
 			}
-
-			Contract.EndContractBlock();
-
-			this._<#= __option.Key #> = value;
 		}
 <#
 }

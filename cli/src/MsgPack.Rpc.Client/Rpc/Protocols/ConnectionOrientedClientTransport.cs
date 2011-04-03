@@ -32,8 +32,8 @@ namespace MsgPack.Rpc.Protocols
 					remoteEndPoint,
 					protocol,
 					eventLoop,
-					options == null ? _defaultMinimumConnectionCount : ( /* options.MinimumConnectionCount ?? */_defaultMinimumConnectionCount ),
-					options == null ? _defaultMaximumConnectionCount : ( /* options.MaximumConnectionCount ?? */_defaultMaximumConnectionCount )
+					options == null ? _defaultMinimumConnectionCount : ( options.MinimumConnectionCount ?? _defaultMinimumConnectionCount ),
+					options == null ? _defaultMaximumConnectionCount : ( options.MaximumConnectionCount ?? _defaultMaximumConnectionCount )
 				);
 			this._connectTimeout =
 				options == null
@@ -55,10 +55,16 @@ namespace MsgPack.Rpc.Protocols
 			return
 				new SendingContext(
 					new ClientSessionContext( this, socketContext ),
-					new RpcOutputBuffer( ChunkBuffer.CreateDefault() ),
+					new RpcOutputBuffer( ChunkBuffer.CreateDefault( this.InitialSegmentCount, this.InitialSegmentSize ) ),
 					messageId,
-					onMessageSent
+					onMessageSent // NOTE: Combine buffer clean up if this uses buffer pooling.
 				);
+		}
+
+		protected override ChunkBuffer GetBufferForReceiveCore( SendingContext context )
+		{
+			// Reuse sending buffer.
+			return context.SendingBuffer.Chunks;
 		}
 
 		protected override void OnReceiveCore( ReceivingContext context, ResponseMessage response, RpcErrorMessage error )

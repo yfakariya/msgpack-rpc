@@ -36,6 +36,8 @@ namespace MsgPack.Rpc.Protocols
 		/// <param name="context"></param>
 		/// <returns>If success to derialize from buffer then true. If buffer does not have enough data to deserialize then false.</returns>
 		void OnReceive( ReceivingContext context );
+
+		ChunkBuffer GetBufferForReceive( SendingContext context );
 	}
 
 	/// <summary>

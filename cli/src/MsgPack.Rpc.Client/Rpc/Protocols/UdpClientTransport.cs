@@ -77,12 +77,19 @@ namespace MsgPack.Rpc.Protocols
 						this,
 						this.EventLoop.CreateSocketContext( this._remoteEndPoint )
 					),
-					new RpcOutputBuffer( ChunkBuffer.CreateDefault() ),
+					new RpcOutputBuffer( ChunkBuffer.CreateDefault( this.InitialSegmentCount, this.InitialSegmentSize ) ),
 					null,
 					onMessageSent
 				);
 		}
-		
+
+		protected override ChunkBuffer GetBufferForReceiveCore( SendingContext context )
+		{
+			// reuse
+			return context.SendingBuffer.Chunks;
+		}
+
+
 		protected sealed override void SendCore( SendingContext context )
 		{
 			this.EventLoop.SendTo( context );

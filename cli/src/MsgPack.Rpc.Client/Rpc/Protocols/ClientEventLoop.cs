@@ -324,21 +324,15 @@ namespace MsgPack.Rpc.Protocols
 				return;
 			}
 
-			// TODO: Callback transport to clean up sending buffer.
-			//context.SessionContext.Transport.OnSent();
-
-			if ( context.MessageId == null )
+			context.OnMessageSent( null, completedSynchronously );
+			
+			if( context.MessageId != null )
 			{
-				context.OnMessageSent( null, completedSynchronously );
-			}
-			else
-			{
-				// TODO: Borrow buffer from Transport.(and Receive should be called via Transport.Receive.)
 				this.Receive(
 					new ReceivingContext(
 						context.SessionContext,
 						new RpcInputBuffer(
-							context.SendingBuffer.Chunks,
+							context.SessionContext.TransportReceiveHandler.GetBufferForReceive( context ),
 							( _, state ) => this.FeedMore( state as RpcSocketAsyncEventArgs ),
 							context.SocketContext
 						),

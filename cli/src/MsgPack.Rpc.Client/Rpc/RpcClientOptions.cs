@@ -55,39 +55,116 @@ namespace MsgPack.Rpc
 			this._isFrozen = true;
 		}
 
-		private int? _ChunkSize;
+		private int? _BufferSegmentSize;
 
 		/// <summary>
-		///		Get buffer chunk size of buffer in bytes.
+		///		Get buffer segment size of buffer in bytes.
 		/// </summary>
 		/// <value>
 		///		Buffer chunk size of buffer in bytes.
 		/// </value>
-		public int? ChunkSize
+		/// <exception cref="InvalidOperationException">You attempt to set the value when this instance is frozen.</exception>
+		public int? BufferSegmentSize
 		{
 			get
 			{
-				return this._ChunkSize;
+				return this._BufferSegmentSize;
+			}
+			set
+			{
+				if( this._isFrozen )
+				{
+					throw new InvalidOperationException( "This instance is frozen." );
+				}
+
+				Contract.EndContractBlock();
+
+				this._BufferSegmentSize = value;
 			}
 		}
-		
+
+		private int? _BufferSegmentCount;
+
 		/// <summary>
-		///		Set buffer chunk size of buffer in bytes.
+		///		Get buffer segment count of buffer in bytes.
 		/// </summary>
-		/// <param name="value">
+		/// <value>
 		///		Buffer chunk size of buffer in bytes.
-		/// </param>
+		/// </value>
 		/// <exception cref="InvalidOperationException">You attempt to set the value when this instance is frozen.</exception>
-		public void SetChunkSize( int? value )
+		public int? BufferSegmentCount
 		{
-			if( this._isFrozen )
+			get
 			{
-				throw new InvalidOperationException( "This instance is frozen." );
+				return this._BufferSegmentCount;
 			}
+			set
+			{
+				if( this._isFrozen )
+				{
+					throw new InvalidOperationException( "This instance is frozen." );
+				}
 
-			Contract.EndContractBlock();
+				Contract.EndContractBlock();
 
-			this._ChunkSize = value;
+				this._BufferSegmentCount = value;
+			}
+		}
+
+		private int? _MinimumConnectionCount;
+
+		/// <summary>
+		///		Get minimum count of connection to preserve in pool.
+		/// </summary>
+		/// <value>
+		///		Minimum count of connection to preserve in pool.
+		/// </value>
+		/// <exception cref="InvalidOperationException">You attempt to set the value when this instance is frozen.</exception>
+		public int? MinimumConnectionCount
+		{
+			get
+			{
+				return this._MinimumConnectionCount;
+			}
+			set
+			{
+				if( this._isFrozen )
+				{
+					throw new InvalidOperationException( "This instance is frozen." );
+				}
+
+				Contract.EndContractBlock();
+
+				this._MinimumConnectionCount = value;
+			}
+		}
+
+		private int? _MaximumConnectionCount;
+
+		/// <summary>
+		///		Get maximum count of connection to hold in pool.
+		/// </summary>
+		/// <value>
+		///		Maximum count of connection to hold in pool.
+		/// </value>
+		/// <exception cref="InvalidOperationException">You attempt to set the value when this instance is frozen.</exception>
+		public int? MaximumConnectionCount
+		{
+			get
+			{
+				return this._MaximumConnectionCount;
+			}
+			set
+			{
+				if( this._isFrozen )
+				{
+					throw new InvalidOperationException( "This instance is frozen." );
+				}
+
+				Contract.EndContractBlock();
+
+				this._MaximumConnectionCount = value;
+			}
 		}
 
 		private int? _ConnectingConcurrency;
@@ -98,31 +175,24 @@ namespace MsgPack.Rpc
 		/// <value>
 		///		Concurrency of 'Connect' operation in <see cref="PollingClientEventLoop"/>.
 		/// </value>
+		/// <exception cref="InvalidOperationException">You attempt to set the value when this instance is frozen.</exception>
 		public int? ConnectingConcurrency
 		{
 			get
 			{
 				return this._ConnectingConcurrency;
 			}
-		}
-		
-		/// <summary>
-		///		Set concurrency of 'Connect' operation in <see cref="PollingClientEventLoop"/>.
-		/// </summary>
-		/// <param name="value">
-		///		Concurrency of 'Connect' operation in <see cref="PollingClientEventLoop"/>.
-		/// </param>
-		/// <exception cref="InvalidOperationException">You attempt to set the value when this instance is frozen.</exception>
-		public void SetConnectingConcurrency( int? value )
-		{
-			if( this._isFrozen )
+			set
 			{
-				throw new InvalidOperationException( "This instance is frozen." );
+				if( this._isFrozen )
+				{
+					throw new InvalidOperationException( "This instance is frozen." );
+				}
+
+				Contract.EndContractBlock();
+
+				this._ConnectingConcurrency = value;
 			}
-
-			Contract.EndContractBlock();
-
-			this._ConnectingConcurrency = value;
 		}
 
 		private int? _SendingConcurrency;
@@ -133,31 +203,24 @@ namespace MsgPack.Rpc
 		/// <value>
 		///		Concurrency of 'Send' operation in <see cref="PollingClientEventLoop"/>.
 		/// </value>
+		/// <exception cref="InvalidOperationException">You attempt to set the value when this instance is frozen.</exception>
 		public int? SendingConcurrency
 		{
 			get
 			{
 				return this._SendingConcurrency;
 			}
-		}
-		
-		/// <summary>
-		///		Set concurrency of 'Send' operation in <see cref="PollingClientEventLoop"/>.
-		/// </summary>
-		/// <param name="value">
-		///		Concurrency of 'Send' operation in <see cref="PollingClientEventLoop"/>.
-		/// </param>
-		/// <exception cref="InvalidOperationException">You attempt to set the value when this instance is frozen.</exception>
-		public void SetSendingConcurrency( int? value )
-		{
-			if( this._isFrozen )
+			set
 			{
-				throw new InvalidOperationException( "This instance is frozen." );
+				if( this._isFrozen )
+				{
+					throw new InvalidOperationException( "This instance is frozen." );
+				}
+
+				Contract.EndContractBlock();
+
+				this._SendingConcurrency = value;
 			}
-
-			Contract.EndContractBlock();
-
-			this._SendingConcurrency = value;
 		}
 
 		private int? _ReceivingConcurrency;
@@ -168,31 +231,24 @@ namespace MsgPack.Rpc
 		/// <value>
 		///		Concurrency of 'Receive' operation in <see cref="PollingClientEventLoop"/>.
 		/// </value>
+		/// <exception cref="InvalidOperationException">You attempt to set the value when this instance is frozen.</exception>
 		public int? ReceivingConcurrency
 		{
 			get
 			{
 				return this._ReceivingConcurrency;
 			}
-		}
-		
-		/// <summary>
-		///		Set concurrency of 'Receive' operation in <see cref="PollingClientEventLoop"/>.
-		/// </summary>
-		/// <param name="value">
-		///		Concurrency of 'Receive' operation in <see cref="PollingClientEventLoop"/>.
-		/// </param>
-		/// <exception cref="InvalidOperationException">You attempt to set the value when this instance is frozen.</exception>
-		public void SetReceivingConcurrency( int? value )
-		{
-			if( this._isFrozen )
+			set
 			{
-				throw new InvalidOperationException( "This instance is frozen." );
+				if( this._isFrozen )
+				{
+					throw new InvalidOperationException( "This instance is frozen." );
+				}
+
+				Contract.EndContractBlock();
+
+				this._ReceivingConcurrency = value;
 			}
-
-			Contract.EndContractBlock();
-
-			this._ReceivingConcurrency = value;
 		}
 
 		private int? _ConnectingQueueLength;
@@ -203,31 +259,24 @@ namespace MsgPack.Rpc
 		/// <value>
 		///		Number of connection to pool
 		/// </value>
+		/// <exception cref="InvalidOperationException">You attempt to set the value when this instance is frozen.</exception>
 		public int? ConnectingQueueLength
 		{
 			get
 			{
 				return this._ConnectingQueueLength;
 			}
-		}
-		
-		/// <summary>
-		///		Set number of connection to pool.
-		/// </summary>
-		/// <param name="value">
-		///		Number of connection to pool
-		/// </param>
-		/// <exception cref="InvalidOperationException">You attempt to set the value when this instance is frozen.</exception>
-		public void SetConnectingQueueLength( int? value )
-		{
-			if( this._isFrozen )
+			set
 			{
-				throw new InvalidOperationException( "This instance is frozen." );
+				if( this._isFrozen )
+				{
+					throw new InvalidOperationException( "This instance is frozen." );
+				}
+
+				Contract.EndContractBlock();
+
+				this._ConnectingQueueLength = value;
 			}
-
-			Contract.EndContractBlock();
-
-			this._ConnectingQueueLength = value;
 		}
 
 		private int? _SendingQueueLength;
@@ -238,31 +287,24 @@ namespace MsgPack.Rpc
 		/// <value>
 		///		Limit of queue of sending message in <see cref="PollingClientEventLoop"/>.
 		/// </value>
+		/// <exception cref="InvalidOperationException">You attempt to set the value when this instance is frozen.</exception>
 		public int? SendingQueueLength
 		{
 			get
 			{
 				return this._SendingQueueLength;
 			}
-		}
-		
-		/// <summary>
-		///		Set limit of queue of sending message in <see cref="PollingClientEventLoop"/>.
-		/// </summary>
-		/// <param name="value">
-		///		Limit of queue of sending message in <see cref="PollingClientEventLoop"/>.
-		/// </param>
-		/// <exception cref="InvalidOperationException">You attempt to set the value when this instance is frozen.</exception>
-		public void SetSendingQueueLength( int? value )
-		{
-			if( this._isFrozen )
+			set
 			{
-				throw new InvalidOperationException( "This instance is frozen." );
+				if( this._isFrozen )
+				{
+					throw new InvalidOperationException( "This instance is frozen." );
+				}
+
+				Contract.EndContractBlock();
+
+				this._SendingQueueLength = value;
 			}
-
-			Contract.EndContractBlock();
-
-			this._SendingQueueLength = value;
 		}
 
 		private int? _ReceivingQueueLength;
@@ -273,31 +315,24 @@ namespace MsgPack.Rpc
 		/// <value>
 		///		Limit of queue of receiving message in <see cref="PollingClientEventLoop"/>.
 		/// </value>
+		/// <exception cref="InvalidOperationException">You attempt to set the value when this instance is frozen.</exception>
 		public int? ReceivingQueueLength
 		{
 			get
 			{
 				return this._ReceivingQueueLength;
 			}
-		}
-		
-		/// <summary>
-		///		Set limit of queue of receiving message in <see cref="PollingClientEventLoop"/>.
-		/// </summary>
-		/// <param name="value">
-		///		Limit of queue of receiving message in <see cref="PollingClientEventLoop"/>.
-		/// </param>
-		/// <exception cref="InvalidOperationException">You attempt to set the value when this instance is frozen.</exception>
-		public void SetReceivingQueueLength( int? value )
-		{
-			if( this._isFrozen )
+			set
 			{
-				throw new InvalidOperationException( "This instance is frozen." );
+				if( this._isFrozen )
+				{
+					throw new InvalidOperationException( "This instance is frozen." );
+				}
+
+				Contract.EndContractBlock();
+
+				this._ReceivingQueueLength = value;
 			}
-
-			Contract.EndContractBlock();
-
-			this._ReceivingQueueLength = value;
 		}
 
 		private bool? _UseConnectionPooling;
@@ -308,31 +343,24 @@ namespace MsgPack.Rpc
 		/// <value>
 		///		If connection pooling is used then true.
 		/// </value>
+		/// <exception cref="InvalidOperationException">You attempt to set the value when this instance is frozen.</exception>
 		public bool? UseConnectionPooling
 		{
 			get
 			{
 				return this._UseConnectionPooling;
 			}
-		}
-		
-		/// <summary>
-		///		Set whether connection pooling is used.
-		/// </summary>
-		/// <param name="value">
-		///		If connection pooling is used then true.
-		/// </param>
-		/// <exception cref="InvalidOperationException">You attempt to set the value when this instance is frozen.</exception>
-		public void SetUseConnectionPooling( bool? value )
-		{
-			if( this._isFrozen )
+			set
 			{
-				throw new InvalidOperationException( "This instance is frozen." );
+				if( this._isFrozen )
+				{
+					throw new InvalidOperationException( "This instance is frozen." );
+				}
+
+				Contract.EndContractBlock();
+
+				this._UseConnectionPooling = value;
 			}
-
-			Contract.EndContractBlock();
-
-			this._UseConnectionPooling = value;
 		}
 
 		private bool? _ForceIPv4;
@@ -343,31 +371,24 @@ namespace MsgPack.Rpc
 		/// <value>
 		///		If IP v4 is forced then true.
 		/// </value>
+		/// <exception cref="InvalidOperationException">You attempt to set the value when this instance is frozen.</exception>
 		public bool? ForceIPv4
 		{
 			get
 			{
 				return this._ForceIPv4;
 			}
-		}
-		
-		/// <summary>
-		///		Set whether force using IP v4 even if IP v6 is available.
-		/// </summary>
-		/// <param name="value">
-		///		If IP v4 is forced then true.
-		/// </param>
-		/// <exception cref="InvalidOperationException">You attempt to set the value when this instance is frozen.</exception>
-		public void SetForceIPv4( bool? value )
-		{
-			if( this._isFrozen )
+			set
 			{
-				throw new InvalidOperationException( "This instance is frozen." );
+				if( this._isFrozen )
+				{
+					throw new InvalidOperationException( "This instance is frozen." );
+				}
+
+				Contract.EndContractBlock();
+
+				this._ForceIPv4 = value;
 			}
-
-			Contract.EndContractBlock();
-
-			this._ForceIPv4 = value;
 		}
 
 		private int? _MaximumRequestQuota;
@@ -378,31 +399,24 @@ namespace MsgPack.Rpc
 		/// <value>
 		///		Maximum request length in bytes.
 		/// </value>
+		/// <exception cref="InvalidOperationException">You attempt to set the value when this instance is frozen.</exception>
 		public int? MaximumRequestQuota
 		{
 			get
 			{
 				return this._MaximumRequestQuota;
 			}
-		}
-		
-		/// <summary>
-		///		Set maximum request length in bytes.
-		/// </summary>
-		/// <param name="value">
-		///		Maximum request length in bytes.
-		/// </param>
-		/// <exception cref="InvalidOperationException">You attempt to set the value when this instance is frozen.</exception>
-		public void SetMaximumRequestQuota( int? value )
-		{
-			if( this._isFrozen )
+			set
 			{
-				throw new InvalidOperationException( "This instance is frozen." );
+				if( this._isFrozen )
+				{
+					throw new InvalidOperationException( "This instance is frozen." );
+				}
+
+				Contract.EndContractBlock();
+
+				this._MaximumRequestQuota = value;
 			}
-
-			Contract.EndContractBlock();
-
-			this._MaximumRequestQuota = value;
 		}
 
 		private int? _MaximumResponseQuota;
@@ -413,31 +427,24 @@ namespace MsgPack.Rpc
 		/// <value>
 		///		Maximum response length in bytes.
 		/// </value>
+		/// <exception cref="InvalidOperationException">You attempt to set the value when this instance is frozen.</exception>
 		public int? MaximumResponseQuota
 		{
 			get
 			{
 				return this._MaximumResponseQuota;
 			}
-		}
-		
-		/// <summary>
-		///		Set maximum response length in bytes.
-		/// </summary>
-		/// <param name="value">
-		///		Maximum response length in bytes.
-		/// </param>
-		/// <exception cref="InvalidOperationException">You attempt to set the value when this instance is frozen.</exception>
-		public void SetMaximumResponseQuota( int? value )
-		{
-			if( this._isFrozen )
+			set
 			{
-				throw new InvalidOperationException( "This instance is frozen." );
+				if( this._isFrozen )
+				{
+					throw new InvalidOperationException( "This instance is frozen." );
+				}
+
+				Contract.EndContractBlock();
+
+				this._MaximumResponseQuota = value;
 			}
-
-			Contract.EndContractBlock();
-
-			this._MaximumResponseQuota = value;
 		}
 
 		private TimeSpan? _ConnectTimeout;
@@ -448,31 +455,24 @@ namespace MsgPack.Rpc
 		/// <value>
 		///		Socket connect timeout.
 		/// </value>
+		/// <exception cref="InvalidOperationException">You attempt to set the value when this instance is frozen.</exception>
 		public TimeSpan? ConnectTimeout
 		{
 			get
 			{
 				return this._ConnectTimeout;
 			}
-		}
-		
-		/// <summary>
-		///		Set socket connect timeout.
-		/// </summary>
-		/// <param name="value">
-		///		Socket connect timeout.
-		/// </param>
-		/// <exception cref="InvalidOperationException">You attempt to set the value when this instance is frozen.</exception>
-		public void SetConnectTimeout( TimeSpan? value )
-		{
-			if( this._isFrozen )
+			set
 			{
-				throw new InvalidOperationException( "This instance is frozen." );
+				if( this._isFrozen )
+				{
+					throw new InvalidOperationException( "This instance is frozen." );
+				}
+
+				Contract.EndContractBlock();
+
+				this._ConnectTimeout = value;
 			}
-
-			Contract.EndContractBlock();
-
-			this._ConnectTimeout = value;
 		}
 
 		private TimeSpan? _DrainTimeout;
@@ -483,31 +483,24 @@ namespace MsgPack.Rpc
 		/// <value>
 		///		Socket drain timeout.
 		/// </value>
+		/// <exception cref="InvalidOperationException">You attempt to set the value when this instance is frozen.</exception>
 		public TimeSpan? DrainTimeout
 		{
 			get
 			{
 				return this._DrainTimeout;
 			}
-		}
-		
-		/// <summary>
-		///		Set socket drain timeout.
-		/// </summary>
-		/// <param name="value">
-		///		Socket drain timeout.
-		/// </param>
-		/// <exception cref="InvalidOperationException">You attempt to set the value when this instance is frozen.</exception>
-		public void SetDrainTimeout( TimeSpan? value )
-		{
-			if( this._isFrozen )
+			set
 			{
-				throw new InvalidOperationException( "This instance is frozen." );
+				if( this._isFrozen )
+				{
+					throw new InvalidOperationException( "This instance is frozen." );
+				}
+
+				Contract.EndContractBlock();
+
+				this._DrainTimeout = value;
 			}
-
-			Contract.EndContractBlock();
-
-			this._DrainTimeout = value;
 		}
 
 		/// <summary>
