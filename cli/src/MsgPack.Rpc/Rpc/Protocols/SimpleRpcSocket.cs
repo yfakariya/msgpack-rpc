@@ -32,6 +32,11 @@ namespace MsgPack.Rpc.Protocols
 	{
 		private readonly Socket _socket;
 
+		public override int Available
+		{
+			get { return this._socket.Available; }
+		}
+
 		/// <summary>
 		///		Get <see cref="RpcTransportProtocol"/> for this socket.
 		/// </summary>

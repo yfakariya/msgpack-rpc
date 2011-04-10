@@ -52,6 +52,7 @@
     <Compile Include="Collections\ArraySegmentExtensionsTest.cs" />
     <Compile Include="Collections\ArraySegmentsExtensionsTest.cs" />
     <Compile Include="Collections\ByteArraySegmentExtensionsTest.cs" />
+    <Compile Include="Collections\GCChunkBufferTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Collections\Concurrent\NotifiableBlockingCollection`1Test.cs" />
     <Compile Include="Rpc\Protocols\RpcSocketMock.cs" />
@@ -69,6 +70,10 @@
     <ProjectReference Include="..\..\src\MsgPack.Rpc\MsgPack.Rpc.csproj">
       <Project>{4109F01B-B25E-457F-BC09-24291526A1E8}</Project>
       <Name>MsgPack.Rpc</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\MsgPack.Rpc.TestUtilities\MsgPack.Rpc.TestUtilities.csproj">
+      <Project>{B4544C9C-1E96-453F-8A30-BDAAF05E4A62}</Project>
+      <Name>MsgPack.Rpc.TestUtilities</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup />

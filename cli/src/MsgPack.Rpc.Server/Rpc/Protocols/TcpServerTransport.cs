@@ -89,7 +89,7 @@ namespace MsgPack.Rpc.Protocols
 			var error = this._requestSerializer.Deserialize( null, out request );
 			if ( !error.IsSuccess )
 			{
-				this._eventLoop.HandleError( RpcTransportOperation.Deserialize, error );
+				this._eventLoop.HandleError( new RpcTransportErrorEventArgs( RpcTransportOperation.Deserialize, error ) );
 				return;
 			}
 
@@ -110,7 +110,7 @@ namespace MsgPack.Rpc.Protocols
 			var error = this._responseSerializer.Serialize( messageId, returnValue, isVoid, rpcException, buffer );
 			if ( !error.IsSuccess )
 			{
-				this._eventLoop.HandleError( RpcTransportOperation.Serialize, messageId, error );
+				this._eventLoop.HandleError( new RpcTransportErrorEventArgs( RpcTransportOperation.Deserialize, messageId, error ) );
 				return;
 			}
 

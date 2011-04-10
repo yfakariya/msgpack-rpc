@@ -88,7 +88,7 @@ namespace MsgPack.Rpc.Serialization
 			internal set { this._arguments = value; }
 		}
 
-		internal RequestMessageDeserializationContext( RpcInputBuffer buffer, int? maxLength )
+		internal RequestMessageDeserializationContext( IEnumerable<byte> buffer, int? maxLength )
 			: base( buffer, maxLength ) { }
 	}
 }

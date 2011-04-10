@@ -89,8 +89,8 @@ namespace MsgPack.Rpc.Serialization
 		{
 			var context =
 				exception != null
-				? new ResponseMessageSerializationContext( buffer, exception, isVoid )
-				: ( isVoid ? new ResponseMessageSerializationContext( buffer ) : new ResponseMessageSerializationContext( buffer, returnValue ) );
+				? new ResponseMessageSerializationContext( buffer, messageId, exception, isVoid )
+				: ( isVoid ? new ResponseMessageSerializationContext( buffer, messageId ) : new ResponseMessageSerializationContext( buffer, messageId, returnValue ) );
 
 			foreach ( var preSerializationFilter in this._preSerializationFilters )
 			{
@@ -155,7 +155,7 @@ namespace MsgPack.Rpc.Serialization
 		/// <exception cref="InvalidOperationException">
 		///		Some filters violate contract.
 		/// </exception>
-		public RpcErrorMessage Deserialize( RpcInputBuffer input, out ResponseMessage result )
+		public RpcErrorMessage Deserialize( IEnumerable<byte> input, out ResponseMessage result )
 		{
 			if ( input == null )
 			{
@@ -230,12 +230,6 @@ namespace MsgPack.Rpc.Serialization
 					return;
 				}
 
-				if ( response == null )
-				{
-					context.SetSerializationError( new RpcErrorMessage( RpcError.MessageRefusedError, "Invalid message.", "Cannot deserialize message stream." ) );
-					return;
-				}
-
 				if ( !response.Value.IsTypeOf<IList<MessagePackObject>>().GetValueOrDefault() )
 				{
 					context.SetSerializationError( new RpcErrorMessage( RpcError.MessageRefusedError, "Invalid message.", "Response message is not array." ) );
@@ -261,13 +255,17 @@ namespace MsgPack.Rpc.Serialization
 					return;
 				}
 
-				if ( !requestFields[ 1 ].IsTypeOf<int>().GetValueOrDefault() )
+				if ( !requestFields[ 1 ].IsTypeOf<uint>().GetValueOrDefault() )
 				{
 					context.SetSerializationError( new RpcErrorMessage( RpcError.MessageRefusedError, "Invalid message.", "Message ID of response message is not int32." ) );
 					return;
 				}
 
-				context.MessageId = requestFields[ 1 ].AsInt32();
+				// For CLS compliance store uint32 value as int32.
+				unchecked
+				{
+					context.MessageId = ( int )requestFields[ 1 ].AsUInt32();
+				}
 
 				// Error is should be string identifier of error, but arbitary objects are supported.
 				context.Error = requestFields[ 2 ];

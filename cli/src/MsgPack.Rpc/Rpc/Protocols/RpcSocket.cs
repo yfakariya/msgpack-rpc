@@ -323,5 +323,7 @@ namespace MsgPack.Rpc.Protocols
 		///		Operation to be disabled.
 		/// </param>
 		public abstract void Shutdown( SocketShutdown how );
+
+		public abstract int Available { get; }
 	}
 }

@@ -20,6 +20,7 @@
 
 using System;
 using System.Diagnostics.Contracts;
+using System.Linq;
 using System.Net.Sockets;
 using System.Threading;
 using System.Net;
@@ -50,7 +51,7 @@ namespace MsgPack.Rpc.Protocols
 		protected sealed override void OnConnected( ConnectingContext context, bool completedSynchronously )
 		{
 			if ( context.Client.SocketContext.ConnectByNameError != null )
-			{ 
+			{
 				// error 
 				context.Client.OnConnectError(
 					RpcError.NetworkUnreacheableError,
@@ -125,43 +126,66 @@ namespace MsgPack.Rpc.Protocols
 			}
 		}
 
-		// todo: pull up
 		protected sealed override void OnReceived( ReceivingContext context, bool completedSynchronously )
 		{
-			if ( context.SocketContext.SocketError != SocketError.Success )
+			if ( context.SessionContext.IsInContinuousRetrieval )
 			{
-				this.HandleError( context.SocketContext.LastOperation, context.SocketContext.SocketError );
+				// Eventually continue blocked unpacking process.
+				context.SessionContext.RetrievalWaitHandle.Set();
 				return;
 			}
-
-			if ( !context.CancellationToken.IsCancellationRequested )
+			else
 			{
-				// FIXME: Feeding.
-				context.SessionContext.TransportReceiveHandler.OnReceive( context );
+				// Eventually invoke callback from ITransportReceiveHandler
+				base.OnReceived( context, completedSynchronously );
 			}
-
-			base.OnReceived( context, completedSynchronously );
 		}
 
-		protected sealed override BufferFeeding FeedMore( RpcSocketAsyncEventArgs context )
+		protected sealed override BufferFeeding FeedMore( int? requestedLength, RpcSocketAsyncEventArgs context )
 		{
 			Contract.Assume( context != null );
 			Contract.Assume( context.UserToken is ReceivingContext );
 
 			var receivingContext = ( ReceivingContext )context.UserToken;
 
-			// TODO: Use async receive?
-			if ( receivingContext.ReceivingBuffer.Remaining > 0 )
+			Contract.Assert( receivingContext.SocketContext != null );
+			Contract.Assert( receivingContext.SocketContext.ConnectSocket != null );
+			Contract.Assert( receivingContext.SocketContext.ConnectSocket.RemoteEndPoint != null );
+
+			// TODO: Buffer recycling
+			var newBuffer =
+				receivingContext.ReceivingBuffer.Reallocate(
+					requestedLength
+					??
+					( receivingContext.SessionContext.Options.BufferSegmentCount ?? 1 ) *
+					( receivingContext.SessionContext.Options.BufferSegmentSize ?? GCChunkBuffer.DefaultSegmentSize ),
+					receivingContext
+				);
+
+			Contract.Assert( newBuffer.Count > 0 );
+			Contract.Assert( newBuffer.All( item => item.Count > 0 ) );
+
+			receivingContext.SocketContext.BufferList = newBuffer;
+
+			if ( receivingContext.SocketContext.ConnectSocket.Available > 0 )
 			{
-				var received = context.ConnectSocket.Receive( context );
-				return new BufferFeeding( received );
+				return new BufferFeeding( context.ConnectSocket.Receive( context ), newBuffer );
 			}
 			else
 			{
-				// TODO: Buffer recycling
-				var newBuffer = ChunkBuffer.CreateDefault();
-				var received = context.ConnectSocket.Receive( context );
-				return new BufferFeeding( received, newBuffer );
+				receivingContext.SessionContext.IsInContinuousRetrieval = true;
+				receivingContext.SessionContext.RetrievalWaitHandle.Reset();
+
+				// TODO: timeout
+				receivingContext.SessionContext.RetrievalWaitHandle.Wait( receivingContext.CancellationToken );
+
+				return
+					new BufferFeeding(
+						( receivingContext.SocketContext.BytesTransferred > receivingContext.ReceivingBuffer.Chunks.TotalLength )
+						? receivingContext.ReceivingBuffer.Chunks.TotalLength
+						: receivingContext.SocketContext.BytesTransferred,
+						newBuffer
+					);
 			}
 		}
 	}

@@ -29,6 +29,17 @@ namespace MsgPack.Rpc.Serialization
 	/// </summary>
 	public sealed class ResponseMessageSerializationContext : MessageSerializationContext
 	{
+		private readonly int _messageId;
+
+		/// <summary>
+		///		Get ID of this message.
+		/// </summary>
+		/// <value>ID of this message.</value>
+		public int MessageId
+		{
+			get { return this._messageId; }
+		} 
+
 		private readonly bool _isVoid;
 
 		/// <summary>
@@ -75,25 +86,28 @@ namespace MsgPack.Rpc.Serialization
 		///		Initialize new instance for succeeded invocation of void method.
 		/// </summary>
 		/// <param name="buffer">Buffer to be written from serializer.</param>
-		internal ResponseMessageSerializationContext( RpcOutputBuffer buffer )
-			: this( buffer, null, null, true ) { }
+		/// <param name="messageId">ID of this message.</param>
+		internal ResponseMessageSerializationContext( RpcOutputBuffer buffer, int messageId )
+			: this( buffer, messageId, null, null, true ) { }
 
 		/// <summary>
 		///		Initialize new instance for succeeded invocation of non-void method.
 		/// </summary>
 		/// <param name="buffer">Buffer to be written from serializer.</param>
+		/// <param name="messageId">ID of this message.</param>
 		/// <param name="returnValue">Return value returned from the method.</param>
-		internal ResponseMessageSerializationContext( RpcOutputBuffer buffer, object returnValue )
-			: this( buffer, returnValue, null, false ) { }
+		internal ResponseMessageSerializationContext( RpcOutputBuffer buffer, int messageId, object returnValue )
+			: this( buffer, messageId, returnValue, null, false ) { }
 
 		/// <summary>
 		///		Initialize new instance for succeeded invocation of non-void method.
 		/// </summary>
 		/// <param name="buffer">Buffer to be written from serializer.</param>
+		/// <param name="messageId">ID of this message.</param>
 		/// <param name="exception">Exception thrown from the method.</param>
 		/// <param name="isVoid">If invoked method is void then true.</param>
-		internal ResponseMessageSerializationContext( RpcOutputBuffer buffer, RpcException exception, bool isVoid )
-			: this( buffer, null, exception, isVoid )
+		internal ResponseMessageSerializationContext( RpcOutputBuffer buffer, int messageId, RpcException exception, bool isVoid )
+			: this( buffer, messageId, null, exception, isVoid )
 		{
 			if ( exception == null )
 			{
@@ -103,9 +117,10 @@ namespace MsgPack.Rpc.Serialization
 			Contract.EndContractBlock();
 		}
 
-		private ResponseMessageSerializationContext( RpcOutputBuffer buffer, object returnValue, RpcException exception, bool isVoid )
+		private ResponseMessageSerializationContext( RpcOutputBuffer buffer, int messageId, object returnValue, RpcException exception, bool isVoid )
 			: base( buffer )
 		{
+			this._messageId = messageId;
 			this._returnValue = returnValue;
 			this._isVoid = isVoid;
 			this._exception = exception;

@@ -42,17 +42,17 @@ namespace MsgPack.Rpc.Serialization
 			get { return this._reallocatedBuffer; }
 		}
 
-		private readonly int _feeded;
+		private readonly long _feeded;
 
-		public int Feeded
+		public long Feeded
 		{
 			get { return this._feeded; }
 		}
 
-		public BufferFeeding( int feeded )
+		public BufferFeeding( long feeded )
 			: this( feeded, null ) { }
 
-		public BufferFeeding( int feeded, ChunkBuffer reallocatedBuffer )
+		public BufferFeeding( long feeded, ChunkBuffer reallocatedBuffer )
 		{
 			this._feeded = feeded;
 			this._reallocatedBuffer = reallocatedBuffer;
@@ -77,7 +77,7 @@ namespace MsgPack.Rpc.Serialization
 
 		public override int GetHashCode()
 		{
-			return this._feeded ^ ( this._reallocatedBuffer == null ? 0 : this._reallocatedBuffer.GetHashCode() );
+			return this._feeded.GetHashCode() ^ ( this._reallocatedBuffer == null ? 0 : this._reallocatedBuffer.GetHashCode() );
 		}
 
 		public override string ToString()

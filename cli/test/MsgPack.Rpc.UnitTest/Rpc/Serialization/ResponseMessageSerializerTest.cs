@@ -68,15 +68,24 @@ namespace MsgPack.Rpc.Serialization
 			}
 
 			// TODO: Mock filters
-			var target = new ResponseMessageSerializer( null, null, null, null, null );
+			var objectTracingFilter = new SerializingResponseTracingFilterProvider();
+			var binaryTracingFilter = new SerializedResponseTracingFilterProvider();
+			var target =
+				SerializerFactory.CreateResponseMessageSerializerWithTracer(
+					objectTracingFilter,
+					binaryTracingFilter,
+					null,
+					null
+				);
+			try
+			{
+				var buffer = new RpcOutputBuffer( ChunkBuffer.CreateDefault() );
 
-			var buffer = new RpcOutputBuffer( ChunkBuffer.CreateDefault() );
-
-			Assert.IsTrue( target.Serialize( id, returnValue, isVoid, error, buffer ).IsSuccess );
-			byte[] serialized = buffer.ReadBytes().ToArray();
-			var mpo =
-				new MessagePackObject(
-					new MessagePackObject[]
+				Assert.IsTrue( target.Serialize( id, returnValue, isVoid, error, buffer ).IsSuccess );
+				byte[] serialized = buffer.ReadBytes().ToArray();
+				var mpo =
+					new MessagePackObject(
+						new MessagePackObject[]
 					{
 						new MessagePackObject( ( int )MessageType.Response ),
 						new MessagePackObject( ( uint )id ),
@@ -85,17 +94,23 @@ namespace MsgPack.Rpc.Serialization
 							? ( error == null ? MessagePackObject.Nil : error.GetExceptionMessage( false ) )
 							: MessagePackObject.FromObject( returnValue )						
 					}
+					);
+				var stream = new MemoryStream();
+				Packer.Create( stream ).Pack( mpo );
+				CollectionAssert.AreEqual(
+					stream.ToArray(),
+					serialized,
+					"Expected:{0}{1}{0}Actual:{0}{2}",
+					Environment.NewLine,
+					mpo,
+					new Unpacker( serialized ).UnpackObject()
 				);
-			var stream = new MemoryStream();
-			Packer.Create( stream ).Pack( mpo );
-			CollectionAssert.AreEqual(
-				stream.ToArray(),
-				serialized,
-				"Expected:{0}{1}{0}Actual:{0}{2}",
-				Environment.NewLine,
-				mpo,
-				new Unpacker( serialized ).UnpackObject()
-			);
+			}
+			finally
+			{
+				Console.WriteLine( "OBJECT TRACE:{0}", objectTracingFilter.GetTrace() );
+				Console.WriteLine( "BINARY TRACE:{0}", binaryTracingFilter.GetTrace() );
+			}
 		}
 
 		[Test]
@@ -130,11 +145,21 @@ namespace MsgPack.Rpc.Serialization
 			}
 
 			// TODO: Mock filters
-			var target = new ResponseMessageSerializer( null, null, null, null, null );
+			var objectTracingFilter = new DeserializedResponseTracingFilterProvider();
+			var binaryTracingFilter = new DeserializingResponseTracingFilterProvider();
+			var target =
+				SerializerFactory.CreateResponseMessageSerializerWithTracer(
+					null,
+					null,
+					binaryTracingFilter,
+					objectTracingFilter
+				);
 
-			var expected =
-				new MessagePackObject(
-					new MessagePackObject[]
+			try
+			{
+				var expected =
+					new MessagePackObject(
+						new MessagePackObject[]
 					{
 						new MessagePackObject( ( int )MessageType.Response ),
 						new MessagePackObject( ( uint )id ),
@@ -143,47 +168,53 @@ namespace MsgPack.Rpc.Serialization
 							? ( error == null ? MessagePackObject.Nil : error.GetExceptionMessage( false ) )
 							: MessagePackObject.FromObject( returnValue )					
 					}
-				);
-			var stream = new MemoryStream();
-			Packer.Create( stream ).Pack( expected );
-			var serialized = stream.ToArray();
-			using ( var underlying = ChunkBuffer.CreateDefault() )
-			{
-				underlying.Feed( new ArraySegment<byte>( serialized ) );
-				using ( var buffer = new RpcInputBuffer( underlying, FeedingNotRequired, null ) )
+					);
+				var stream = new MemoryStream();
+				Packer.Create( stream ).Pack( expected );
+				var serialized = stream.ToArray();
+				using ( var underlying = ChunkBuffer.CreateDefault() )
 				{
-					ResponseMessage actual;
-					var result = target.Deserialize( buffer, out actual );
-					Assert.IsTrue( result.IsSuccess, result.ToString() );
-					Assert.AreEqual( id, actual.MessageId );
-					if ( isVoid || returnValue == null )
+					underlying.Feed( new ArraySegment<byte>( serialized ) );
+					using ( var buffer = new RpcInputBuffer<object, object>( underlying, ReallocationNotRequired, FeedingNotRequired, null ) )
 					{
-						Assert.IsTrue( actual.ReturnValue.IsNil );
-					}
-					else
-					{
-						Assert.AreEqual( returnValue.ToString(), actual.ReturnValue.AsString() );
-					}
-
-					if ( error == null )
-					{
-						Assert.IsNull( actual.Error );
-					}
-					else
-					{
-						Assert.AreEqual( expected.AsList()[ 2 ].AsString(), actual.Error.RpcError.Identifier );
-						Assert.AreEqual( expected.AsList()[ 3 ].AsDictionary()[ MessagePackConvert.EncodeString( "ErrorCode" ) ].AsInt32(), actual.Error.RpcError.ErrorCode );
-						Assert.AreEqual( expected.AsList()[ 3 ].AsDictionary()[ MessagePackConvert.EncodeString( "Message" ) ].AsString(), actual.Error.Message );
-						if ( expected.AsList()[ 3 ].AsDictionary().ContainsKey( MessagePackConvert.EncodeString( "DebugInformation" ) ) )
+						ResponseMessage actual;
+						var result = target.Deserialize( buffer, out actual );
+						Assert.IsTrue( result.IsSuccess, result.ToString() );
+						Assert.AreEqual( id, actual.MessageId );
+						if ( isVoid || returnValue == null )
 						{
-							Assert.AreEqual( expected.AsList()[ 3 ].AsDictionary()[ MessagePackConvert.EncodeString( "DebugInformation" ) ].AsString(), actual.Error.DebugInformation );
+							Assert.IsTrue( actual.ReturnValue.IsNil );
 						}
 						else
 						{
-							Assert.IsNull( actual.Error.DebugInformation );
+							Assert.AreEqual( returnValue.ToString(), actual.ReturnValue.AsString() );
+						}
+
+						if ( error == null )
+						{
+							Assert.IsNull( actual.Error );
+						}
+						else
+						{
+							Assert.AreEqual( expected.AsList()[ 2 ].AsString(), actual.Error.RpcError.Identifier );
+							Assert.AreEqual( expected.AsList()[ 3 ].AsDictionary()[ MessagePackConvert.EncodeString( "ErrorCode" ) ].AsInt32(), actual.Error.RpcError.ErrorCode );
+							Assert.AreEqual( expected.AsList()[ 3 ].AsDictionary()[ MessagePackConvert.EncodeString( "Message" ) ].AsString(), actual.Error.Message );
+							if ( expected.AsList()[ 3 ].AsDictionary().ContainsKey( MessagePackConvert.EncodeString( "DebugInformation" ) ) )
+							{
+								Assert.AreEqual( expected.AsList()[ 3 ].AsDictionary()[ MessagePackConvert.EncodeString( "DebugInformation" ) ].AsString(), actual.Error.DebugInformation );
+							}
+							else
+							{
+								Assert.IsNull( actual.Error.DebugInformation );
+							}
 						}
 					}
 				}
+			}
+			finally
+			{
+				Console.WriteLine( "BINARY TRACE:{0}", binaryTracingFilter.GetTrace() );
+				Console.WriteLine( "OBJECT TRACE:{0}", objectTracingFilter.GetTrace() );
 			}
 		}
 
@@ -218,11 +249,20 @@ namespace MsgPack.Rpc.Serialization
 				Assert.IsFalse( isVoid, "isVoid should be false in error test." );
 			}
 			// TODO: Mock filters
-			var target = new ResponseMessageSerializer( null, null, null, null, null );
-
-			var expected =
-				new MessagePackObject(
-					new MessagePackObject[]
+			var objectTracingFilter = new DeserializedResponseTracingFilterProvider();
+			var binaryTracingFilter = new DeserializingResponseTracingFilterProvider();
+			var target =
+				SerializerFactory.CreateResponseMessageSerializerWithTracer(
+					null,
+					null,
+					binaryTracingFilter,
+					objectTracingFilter
+				);
+			try
+			{
+				var expected =
+					new MessagePackObject(
+						new MessagePackObject[]
 					{
 						new MessagePackObject( ( int )MessageType.Response ),
 						new MessagePackObject( ( uint )id ),
@@ -231,69 +271,83 @@ namespace MsgPack.Rpc.Serialization
 							? ( error == null ? MessagePackObject.Nil : error.GetExceptionMessage( false ) )
 							: MessagePackObject.FromObject( returnValue )						
 					}
-				);
-			var stream = new MemoryStream();
-			Packer.Create( stream ).Pack( expected );
-			var serialized = stream.ToArray();
-			var packets = Segmentate( serialized, 10 ).ToArray();
-			int indexOfPackets = 0;
-			using ( var underlying = ChunkBuffer.CreateDefault() )
-			{
-				underlying.Feed( new ArraySegment<byte>( packets[ 0 ] ) );
-				using ( var buffer =
-					new RpcInputBuffer(
-						underlying,
-						( item, _ ) =>
-						{
-							indexOfPackets++;
-							if ( indexOfPackets >= packets.Length )
-							{
-								return default( BufferFeeding );
-								//Assert.Fail( "Over requesting." );
-							}
-
-							item.Feed( new ArraySegment<byte>( packets[ indexOfPackets ] ) );
-							return new BufferFeeding( packets[ indexOfPackets ].Length );
-						},
-						null
-					) )
+					);
+				var stream = new MemoryStream();
+				Packer.Create( stream ).Pack( expected );
+				var serialized = stream.ToArray();
+				var packets = Segmentate( serialized, 10 ).ToArray();
+				int indexOfPackets = 0;
+				using ( var underlying = ChunkBuffer.CreateDefault() )
 				{
-					ResponseMessage actual;
-					var result = target.Deserialize( buffer, out actual );
-					Assert.IsTrue( result.IsSuccess, result.ToString() );
-					Assert.AreEqual( id, actual.MessageId );
-					if ( isVoid || returnValue == null )
-					{
-						Assert.IsTrue( actual.ReturnValue.IsNil );
-					}
-					else
-					{
-						Assert.AreEqual( returnValue.ToString(), actual.ReturnValue.AsString() );
-					}
+					underlying.Feed( new ArraySegment<byte>( packets[ 0 ] ) );
+					using ( var buffer =
+						new RpcInputBuffer<object, object>(
+							underlying,
+							( _0, _1, _2 ) => ChunkBuffer.CreateDefault(),
+							( item, _0, _1 ) =>
+							{
+								indexOfPackets++;
+								if ( indexOfPackets >= packets.Length )
+								{
+									return default( BufferFeeding );
+									//Assert.Fail( "Over requesting." );
+								}
 
-					if ( error == null )
+								item.Reset();
+								item.Feed( new ArraySegment<byte>( packets[ indexOfPackets ] ) );
+								return new BufferFeeding( packets[ indexOfPackets ].Length );
+							},
+							null
+						) )
 					{
-						Assert.IsNull( actual.Error );
-					}
-					else
-					{
-						Assert.AreEqual( expected.AsList()[ 2 ].AsString(), actual.Error.RpcError.Identifier );
-						Assert.AreEqual( expected.AsList()[ 3 ].AsDictionary()[ MessagePackConvert.EncodeString( "ErrorCode" ) ].AsInt32(), actual.Error.RpcError.ErrorCode );
-						Assert.AreEqual( expected.AsList()[ 3 ].AsDictionary()[ MessagePackConvert.EncodeString( "Message" ) ].AsString(), actual.Error.Message );
-						if ( expected.AsList()[ 3 ].AsDictionary().ContainsKey( MessagePackConvert.EncodeString( "DebugInformation" ) ) )
+						ResponseMessage actual;
+						var result = target.Deserialize( buffer, out actual );
+						Assert.IsTrue( result.IsSuccess, result.ToString() );
+						Assert.AreEqual( id, actual.MessageId );
+						if ( isVoid || returnValue == null )
 						{
-							Assert.AreEqual( expected.AsList()[ 3 ].AsDictionary()[ MessagePackConvert.EncodeString( "DebugInformation" ) ].AsString(), actual.Error.DebugInformation );
+							Assert.IsTrue( actual.ReturnValue.IsNil );
 						}
 						else
 						{
-							Assert.IsNull( actual.Error.DebugInformation );
+							Assert.AreEqual( returnValue.ToString(), actual.ReturnValue.AsString() );
+						}
+
+						if ( error == null )
+						{
+							Assert.IsNull( actual.Error );
+						}
+						else
+						{
+							Assert.AreEqual( expected.AsList()[ 2 ].AsString(), actual.Error.RpcError.Identifier );
+							Assert.AreEqual( expected.AsList()[ 3 ].AsDictionary()[ MessagePackConvert.EncodeString( "ErrorCode" ) ].AsInt32(), actual.Error.RpcError.ErrorCode );
+							Assert.AreEqual( expected.AsList()[ 3 ].AsDictionary()[ MessagePackConvert.EncodeString( "Message" ) ].AsString(), actual.Error.Message );
+							if ( expected.AsList()[ 3 ].AsDictionary().ContainsKey( MessagePackConvert.EncodeString( "DebugInformation" ) ) )
+							{
+								Assert.AreEqual( expected.AsList()[ 3 ].AsDictionary()[ MessagePackConvert.EncodeString( "DebugInformation" ) ].AsString(), actual.Error.DebugInformation );
+							}
+							else
+							{
+								Assert.IsNull( actual.Error.DebugInformation );
+							}
 						}
 					}
 				}
 			}
+			finally
+			{
+				Console.WriteLine( "BINARY TRACE:{0}", binaryTracingFilter.GetTrace() );
+				Console.WriteLine( "OBJECT TRACE:{0}", objectTracingFilter.GetTrace() );
+			}
 		}
 
-		private static BufferFeeding FeedingNotRequired( ChunkBuffer buffer, object state )
+		private static ChunkBuffer ReallocationNotRequired( ChunkBuffer oldBuffer, long requestedLength, object context )
+		{
+			Assert.Fail( "Reallocation must not required." );
+			return default( ChunkBuffer );
+		}
+
+		private static BufferFeeding FeedingNotRequired( ChunkBuffer buffer, int? requiredLength, object context )
 		{
 			Assert.Fail( "Feeding must not required." );
 			return default( BufferFeeding );
@@ -322,6 +376,8 @@ namespace MsgPack.Rpc.Serialization
 				}
 			}
 		}
+
+		
 	}
 }
 

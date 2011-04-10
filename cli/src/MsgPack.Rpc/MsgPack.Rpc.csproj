@@ -57,6 +57,12 @@
     <Compile Include="..\CommonAssemblyInfo.Rpc.cs">
       <Link>Properties\CommonAssemblyInfo.Rpc.cs</Link>
     </Compile>
+    <Compile Include="Collections\ArraySegmentExtensions.cs" />
+    <Compile Include="Collections\ArraySegmentsExtensions.cs" />
+    <Compile Include="Collections\Arrays`1.cs" />
+    <Compile Include="Collections\ByteArraySegmentExtensions.cs" />
+    <Compile Include="Collections\ChunkBuffer.cs" />
+    <Compile Include="Collections\GCChunkBuffer.cs" />
     <Compile Include="Collections\Concurrent\NotifiableBlockingCollection`1.cs" />
     <Compile Include="Collections\MessagePackObjectDictionary.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -89,7 +95,7 @@
     <Compile Include="Rpc\Protocols\ResponseMessage.cs" />
     <Compile Include="Rpc\Serialization\ResponseMessageSerializer.cs" />
     <Compile Include="Rpc\Protocols\RpcTransportOperation.cs" />
-    <Compile Include="Rpc\Serialization\RpcInputBuffer.cs" />
+    <Compile Include="Rpc\Serialization\RpcInputBuffer`2.cs" />
     <Compile Include="Rpc\Serialization\RpcOutputBuffer.cs" />
     <Compile Include="Rpc\Serialization\SerializationErrorSink.cs" />
     <Compile Include="Rpc\Serialization\SerializedMessageFilter.cs" />

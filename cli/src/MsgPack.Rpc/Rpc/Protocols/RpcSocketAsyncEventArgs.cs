@@ -37,8 +37,7 @@ namespace MsgPack.Rpc.Protocols
 		private readonly Action<RpcSocketAsyncEventArgs, bool> _onReceived;
 		private readonly Action<SocketAsyncOperation, SocketError> _onError;
 		private readonly Action<RpcSocketAsyncEventArgs, SocketError, bool> _onConnectError;
-
-
+		
 		private RpcSocket _acceptSocket;
 
 		/// <summary>

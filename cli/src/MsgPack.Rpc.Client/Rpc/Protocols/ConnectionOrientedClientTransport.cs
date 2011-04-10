@@ -54,23 +54,18 @@ namespace MsgPack.Rpc.Protocols
 			var socketContext = this._connectionPool.Borrow( this._connectTimeout, this.EventLoop.CancellationToken );
 			return
 				new SendingContext(
-					new ClientSessionContext( this, socketContext ),
+					new ClientSessionContext( this, this.Options, socketContext ),
 					new RpcOutputBuffer( ChunkBuffer.CreateDefault( this.InitialSegmentCount, this.InitialSegmentSize ) ),
 					messageId,
 					onMessageSent // NOTE: Combine buffer clean up if this uses buffer pooling.
 				);
 		}
 
-		protected override ChunkBuffer GetBufferForReceiveCore( SendingContext context )
-		{
-			// Reuse sending buffer.
-			return context.SendingBuffer.Chunks;
-		}
-
 		protected override void OnReceiveCore( ReceivingContext context, ResponseMessage response, RpcErrorMessage error )
 		{
 			base.OnReceiveCore( context, response, error );
 			this._connectionPool.Return( context.SocketContext );
+			context.SessionContext.Dispose();
 			// FIXME: Return to buffer pool.
 		}
 	}

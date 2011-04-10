@@ -25,12 +25,23 @@ using MsgPack.Collections;
 
 namespace MsgPack.Rpc.Serialization
 {
-	// TODO: cleanup
 	/// <summary>
 	///		Stores context information of request or notification message serialization.
 	/// </summary>
 	public sealed class RequestMessageSerializationContext : MessageSerializationContext
 	{
+		private readonly int? _messageId;
+
+		/// <summary>
+		///		Get ID of message.
+		/// </summary>
+		/// <value>ID of message. If this message is notification then null.</value>
+		public int? MessageId
+		{
+			get { return this._messageId; }
+		} 
+
+
 		private readonly string _methodName;
 
 		/// <summary>
@@ -55,7 +66,7 @@ namespace MsgPack.Rpc.Serialization
 			get { return this._arguments; }
 		}
 
-		internal RequestMessageSerializationContext( RpcOutputBuffer buffer, string methodName, IList<object> arguments )
+		internal RequestMessageSerializationContext( RpcOutputBuffer buffer, int? messageId, string methodName, IList<object> arguments )
 			: base( buffer )
 		{
 			if ( methodName == null )
@@ -75,6 +86,7 @@ namespace MsgPack.Rpc.Serialization
 
 			Contract.EndContractBlock();
 
+			this._messageId = messageId;
 			this._methodName = methodName;
 			this._arguments = arguments;
 		}

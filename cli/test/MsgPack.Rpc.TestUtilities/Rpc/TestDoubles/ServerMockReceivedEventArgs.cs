@@ -57,7 +57,7 @@ namespace MsgPack.Rpc.TestDoubles
 			using ( var buffer = GCChunkBuffer.CreateDefault() )
 			{
 				buffer.Feed( new ArraySegment<byte>( this._context.Buffer, this._context.Offset, this._context.BytesTransferred ) );
-				using ( RpcInputBuffer rpcBuffer = new RpcInputBuffer( buffer, ( _0, _1 ) => new BufferFeeding( 0 ), null ) )
+				using ( var rpcBuffer = new RpcInputBuffer<object,object>( buffer, ( old, _1, _2 ) => old, ( _0, _1, _2 ) => new BufferFeeding( 0 ), null ) )
 				{
 					return SerializationUtility.DeserializeRequestOrNotification( rpcBuffer );
 				}
@@ -76,7 +76,6 @@ namespace MsgPack.Rpc.TestDoubles
 				throw new InvalidOperationException();
 			}
 
-#warning なぜかチャンクが1バイトx多数になってる。。。
 			using ( var buffer = GCChunkBuffer.CreateDefault() )
 			{
 				using ( RpcOutputBuffer rpcBuffer = SerializationUtility.SerializeResponse( id.Value, message ) )

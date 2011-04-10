@@ -67,7 +67,7 @@ namespace MsgPack.Rpc.Serialization
 			return result;
 		}
 
-		public static RequestMessage DeserializeRequestOrNotification( RpcInputBuffer input )
+		public static RequestMessage DeserializeRequestOrNotification( IEnumerable<byte> input )
 		{
 			RequestMessage result;
 			var error =
@@ -144,7 +144,7 @@ namespace MsgPack.Rpc.Serialization
 			return result;
 		}
 
-		public static ResponseMessage DeserializeResponse( RpcInputBuffer input )
+		public static ResponseMessage DeserializeResponse( IEnumerable<byte> input )
 		{
 			ResponseMessage result;
 			var error =

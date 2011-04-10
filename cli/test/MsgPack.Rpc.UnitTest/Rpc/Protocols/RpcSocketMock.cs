@@ -35,6 +35,11 @@ namespace MsgPack.Rpc.Protocols
 
 		private readonly Socket sock;
 
+		public override int Available
+		{
+			get { return this.sock.Available; }
+		}
+
 		public override RpcTransportProtocol Protocol
 		{
 			get { throw new NotImplementedException(); }

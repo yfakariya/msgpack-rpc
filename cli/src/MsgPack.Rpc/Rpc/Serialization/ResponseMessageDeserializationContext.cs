@@ -20,6 +20,7 @@
 
 using System;
 using MsgPack.Collections;
+using System.Collections.Generic;
 
 namespace MsgPack.Rpc.Serialization
 {
@@ -75,7 +76,7 @@ namespace MsgPack.Rpc.Serialization
 		/// </summary>
 		/// <param name="buffer">Buffer which contains packed stream.</param>
 		/// <param name="maxLength">Maximum quota.</param>
-		internal ResponseMessageDeserializationContext( RpcInputBuffer buffer, int? maxLength )
+		internal ResponseMessageDeserializationContext( IEnumerable<byte> buffer, int? maxLength )
 			: base( buffer, maxLength ) { }
 	}
 }

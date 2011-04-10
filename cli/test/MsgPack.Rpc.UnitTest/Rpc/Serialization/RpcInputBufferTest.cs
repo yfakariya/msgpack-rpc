@@ -39,7 +39,7 @@ namespace MsgPack.Rpc.Serialization
 			{
 				var expected = Enumerable.Range( 1, 2 ).Select( item => ( byte )item ).ToArray();
 				buffer.Feed( expected.ToArray() );
-				using ( var target = new RpcInputBuffer( buffer, ( _0, _1 ) => default( BufferFeeding ), null ) )
+				using ( var target = new RpcInputBuffer<object, object>( buffer, ( _0, _1, _2 ) => ChunkBuffer.CreateDefault(), ( _0, _1, _2 ) => default( BufferFeeding ), null ) )
 				{
 					CollectionAssert.AreEqual( expected, target.ToArray() );
 				}
@@ -54,9 +54,10 @@ namespace MsgPack.Rpc.Serialization
 			{
 				buffer.Feed( Enumerable.Range( 1, 2 ).Select( item => ( byte )item ).ToArray() );
 				using ( var target =
-					new RpcInputBuffer(
+					new RpcInputBuffer<object, object>(
 						buffer,
-						( _0, _1 ) =>
+						( _0, _1, _2 ) => ChunkBuffer.CreateDefault(),
+						( _0, _1, _2 ) =>
 						{
 							if ( feeded )
 							{
@@ -82,7 +83,7 @@ namespace MsgPack.Rpc.Serialization
 			{
 				var expected = Enumerable.Range( 1, 6 ).Select( item => ( byte )item ).ToArray();
 				buffer.Feed( expected.ToArray() );
-				using ( var target = new RpcInputBuffer( buffer, ( _0, _1 ) => default( BufferFeeding ), null ) )
+				using ( var target = new RpcInputBuffer<object, object>( buffer, ( _0, _1, _2 ) => ChunkBuffer.CreateDefault(), ( _0, _1, _2 ) => default( BufferFeeding ), null ) )
 				{
 					CollectionAssert.AreEqual( expected, target.ToArray() );
 				}
@@ -97,9 +98,10 @@ namespace MsgPack.Rpc.Serialization
 			{
 				buffer.Feed( new ArraySegment<byte>( Enumerable.Range( 1, 6 ).Select( item => ( byte )item ).ToArray() ) );
 				using ( var target =
-					new RpcInputBuffer(
+					new RpcInputBuffer<object, object>(
 						buffer,
-						( _0, _1 ) =>
+						( _0, _1, _2 ) => ChunkBuffer.CreateDefault(),
+						( _0, _1, _2 ) =>
 						{
 							if ( feeded )
 							{
@@ -126,7 +128,7 @@ namespace MsgPack.Rpc.Serialization
 			{
 				var expected = Enumerable.Range( 1, 2 ).Select( item => ( byte )item ).ToArray();
 				buffer.Feed( expected.ToArray() );
-				using ( var target = new RpcInputBuffer( buffer, ( _0, _1 ) => new BufferFeeding( 0 ), null ) )
+				using ( var target = new RpcInputBuffer<object, object>( buffer, ( _0, _1, _2 ) => ChunkBuffer.CreateDefault(), ( _0, _1, _2 ) => new BufferFeeding( 0 ), null ) )
 				{
 					CollectionAssert.AreEqual( Enumerable.Range( 1, 2 ).ToArray(), target.ToArray() );
 				}

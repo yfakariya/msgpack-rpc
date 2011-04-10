@@ -20,25 +20,42 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using NUnit.Framework;
-using MsgPack.Rpc.Protocols;
-using MsgPack.Rpc;
-using System.Threading;
-using System.Net.Sockets;
-using MsgPack.Rpc.TestDoubles;
-using System.Net;
-using MsgPack;
 using System.IO;
-using MsgPack.Rpc.Serialization;
+using System.Linq;
+using System.Net;
+using System.Net.Sockets;
+using System.Threading;
+using MsgPack;
 using MsgPack.Collections;
+using MsgPack.Rpc;
+using MsgPack.Rpc.Protocols;
+using MsgPack.Rpc.Serialization;
+using MsgPack.Rpc.TestDoubles;
+using NUnit.Framework;
+using System.Text;
+using System.Diagnostics;
 
 namespace MessagePack.Rpc.Protocols
 {
 	[TestFixture]
 	public class ClientEventLoopTest
 	{
+
+		private static int MillisecondsTimeout
+		{
+			get
+			{
+				if ( Debugger.IsAttached )
+				{
+					return Timeout.Infinite;
+				}
+				else
+				{
+					return 3000;
+				}
+			}
+		}
+
 		private static IEnumerable<ClientEventLoop> CreateTestTargets(
 			Func<RpcClientOptions> optionsFactory,
 			Func<EventHandler<RpcTransportErrorEventArgs>> errorHandlerFactory, // FIXME: Should be Action<T>
@@ -243,7 +260,16 @@ namespace MessagePack.Rpc.Protocols
 					server.Received +=
 						( sender, e ) =>
 						{
-							Console.WriteLine( "Received" );
+							Console.WriteLine(
+								"Received. Type:{0}, ID:{1}, Method:'{2}', Arguments:'{3}'",
+								e.GetRequest().MessageType,
+								e.GetRequest().MessageId,
+								e.GetRequest().Method,
+								e.GetRequest().Arguments.Aggregate(
+									new StringBuilder( "[" ),
+									( buffer, item ) => ( buffer.Length == 1 ? buffer : buffer.Append( ", " ) ).Append( item )
+								).Append( ']' )
+							);
 							Assert.AreEqual( "Test", e.GetRequest().Method );
 							e.Reply( 1, messageToSend );
 						};
@@ -294,6 +320,7 @@ namespace MessagePack.Rpc.Protocols
 						new SendingContext(
 							new ClientSessionContext(
 								receiverMock,
+								new RpcClientOptions(),
 								socketContext
 							),
 							new RpcOutputBuffer( ChunkBuffer.CreateDefault() ),
@@ -307,7 +334,7 @@ namespace MessagePack.Rpc.Protocols
 					sendingContext.SendingBuffer.OpenWriteStream().Write( requestBytes, 0, requestBytes.Length );
 					sendingContext.SocketContext.BufferList = sendingContext.SendingBuffer.DebugGetChunk();
 					target.Send( sendingContext );
-					Assert.IsTrue( receiveCompleted.Wait( 3000 ), "Timeout" );
+					Assert.IsTrue( receiveCompleted.Wait( MillisecondsTimeout ), "Timeout" );
 					Assert.IsTrue( returned.HasValue );
 					if ( errorOnTest != null )
 					{
@@ -353,6 +380,11 @@ namespace MessagePack.Rpc.Protocols
 			public ChunkBuffer GetBufferForReceive( SendingContext context )
 			{
 				return context.SendingBuffer.DebugGetChunk();
+			}
+
+			public ChunkBuffer ReallocateReceivingBuffer( ChunkBuffer oldBuffer, long requestedLength, ReceivingContext context )
+			{
+				return ChunkBuffer.CreateDefault();
 			}
 		}
 

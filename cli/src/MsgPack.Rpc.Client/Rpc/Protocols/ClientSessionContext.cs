@@ -38,12 +38,14 @@ namespace MsgPack.Rpc.Protocols
 		void OnReceive( ReceivingContext context );
 
 		ChunkBuffer GetBufferForReceive( SendingContext context );
+
+		ChunkBuffer ReallocateReceivingBuffer( ChunkBuffer oldBuffer, long requestedLength, ReceivingContext context );
 	}
 
 	/// <summary>
 	///		Encapselates low-level transportation context which uses async socket.
 	/// </summary>
-	public sealed class ClientSessionContext
+	public sealed class ClientSessionContext : IDisposable
 	{
 		private readonly RpcSocketAsyncEventArgs _socketContext;
 
@@ -52,6 +54,13 @@ namespace MsgPack.Rpc.Protocols
 			get { return this._socketContext; }
 		}
 
+		private readonly RpcClientOptions _options;
+
+		public RpcClientOptions Options
+		{
+			get { return this._options; }
+		} 
+
 		private readonly ITransportReceiveHandler _transportReceiveHandler;
 
 		public ITransportReceiveHandler TransportReceiveHandler
@@ -59,22 +68,32 @@ namespace MsgPack.Rpc.Protocols
 			get { return this._transportReceiveHandler; }
 		}
 
-		private object _userToken;
 
-		public object UserToken
+		public object UserToken { get; set; }
+
+		public bool IsInContinuousRetrieval { get; set; }
+
+		private readonly Lazy<ManualResetEventSlim> _retrievalWaitHandle;
+
+		public ManualResetEventSlim RetrievalWaitHandle
 		{
-			get { return this._userToken; }
-			set { this._userToken = value; }
+			get { return _retrievalWaitHandle.Value; }
 		}
 
 		public ClientSessionContext(
 			ITransportReceiveHandler transportReceiveHandler,
+			RpcClientOptions options,
 			RpcSocketAsyncEventArgs socketContext
 		)
 		{
 			if ( transportReceiveHandler == null )
 			{
 				throw new ArgumentNullException( "transportReceiveHandler" );
+			}
+
+			if ( options == null )
+			{
+				throw new ArgumentNullException( "options" );
 			}
 
 			if ( socketContext == null )
@@ -85,7 +104,18 @@ namespace MsgPack.Rpc.Protocols
 			Contract.EndContractBlock();
 
 			this._transportReceiveHandler = transportReceiveHandler;
+			this._options = options;
 			this._socketContext = socketContext;
 		}
+
+		public void Dispose()
+		{
+			if ( this._retrievalWaitHandle.IsValueCreated )
+			{
+				this._retrievalWaitHandle.Value.Dispose();
+			}
+		}
+
+		public int ReceivedBytes { get; set; }
 	}
 }

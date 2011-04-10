@@ -75,6 +75,7 @@ namespace MsgPack.Rpc.Protocols
 				new SendingContext(
 					new ClientSessionContext(
 						this,
+						this.Options,
 						this.EventLoop.CreateSocketContext( this._remoteEndPoint )
 					),
 					new RpcOutputBuffer( ChunkBuffer.CreateDefault( this.InitialSegmentCount, this.InitialSegmentSize ) ),
@@ -82,19 +83,14 @@ namespace MsgPack.Rpc.Protocols
 					onMessageSent
 				);
 		}
-
-		protected override ChunkBuffer GetBufferForReceiveCore( SendingContext context )
-		{
-			// reuse
-			return context.SendingBuffer.Chunks;
-		}
-
-
+		
 		protected sealed override void SendCore( SendingContext context )
 		{
 			this.EventLoop.SendTo( context );
 			throw new NotImplementedException();
 			//this.EventLoop.ReceiveFrom()
 		}
+
+		// FIXME: Dispose session context in OnDent
 	}
 }

@@ -31,7 +31,7 @@ namespace MsgPack.Rpc.Serialization
 	/// </summary>
 	public abstract class MessageDeserializationContext : SerializationErrorSink
 	{
-		private readonly RpcInputBuffer _buffer;
+		private readonly IEnumerable<byte> _buffer;
 		private int _processed;
 		private readonly int? _maxLength;
 
@@ -50,7 +50,7 @@ namespace MsgPack.Rpc.Serialization
 		/// <exception cref="ArgumentOutOfRangeException">
 		///		<paramref name="maxLength"/> is not null but negative.
 		/// </exception>
-		protected MessageDeserializationContext( RpcInputBuffer buffer, int? maxLength )
+		protected MessageDeserializationContext( IEnumerable<byte> buffer, int? maxLength )
 		{
 			if ( buffer == null )
 			{

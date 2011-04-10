@@ -396,7 +396,7 @@ namespace MsgPack.Rpc.Protocols
 		/// <summary>
 		/// 	Buffer for receiving data.
 		/// </summary>
-		private readonly RpcInputBuffer _receivingBuffer;
+		private readonly RpcInputBuffer<RpcSocketAsyncEventArgs,ReceivingContext> _receivingBuffer;
 		
 		/// <summary>
 		/// 	Get buffer for receiving data.
@@ -404,7 +404,7 @@ namespace MsgPack.Rpc.Protocols
 		/// <value>
 		/// 	Buffer for receiving data.
 		/// </value>
-		public RpcInputBuffer ReceivingBuffer
+		public RpcInputBuffer<RpcSocketAsyncEventArgs,ReceivingContext> ReceivingBuffer
 		{
 			get
 			{
@@ -445,7 +445,7 @@ namespace MsgPack.Rpc.Protocols
 		/// </param>
 		internal ReceivingContext(
 			ClientSessionContext sessionContext,
-			RpcInputBuffer receivingBuffer,
+			RpcInputBuffer<RpcSocketAsyncEventArgs,ReceivingContext> receivingBuffer,
 			Unpacker unpacker
 		)
 		{

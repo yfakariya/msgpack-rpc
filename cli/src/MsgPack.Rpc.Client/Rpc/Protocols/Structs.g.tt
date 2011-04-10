@@ -89,7 +89,7 @@ GetStructCodeGenerator(
 	new List<FieldDeclaration>()
 	{
 		new FieldDeclaration( "_sessionContext", "ClientSessionContext", false ) { SummaryComment = "Get session context.", ValueComment = "Session context." },
-		new FieldDeclaration( "_receivingBuffer", "RpcInputBuffer", false ) { SummaryComment = "Get buffer for receiving data.", ValueComment = "Buffer for receiving data." },
+		new FieldDeclaration( "_receivingBuffer", "RpcInputBuffer<RpcSocketAsyncEventArgs,ReceivingContext>", false ) { SummaryComment = "Get buffer for receiving data.", ValueComment = "Buffer for receiving data." },
 		new FieldDeclaration( "_unpacker", "Unpacker", false ) { SummaryComment = "Get unpacker to deserialize receiving data.", ValueComment = "Unpacker to deserialize data." },
 	},
 	typeOptions : ValueTypeOptions.Public,

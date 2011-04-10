@@ -83,7 +83,7 @@ namespace MsgPack.Rpc.Client
 						}
 					};
 				var options = new RpcClientOptions();
-				options.SetForceIPv4( true );
+				options.ForceIPv4 = true;
 				RpcErrorMessage? error = null;
 				using ( var eventLoop = new IOCompletionPortClientEventLoop( options, ( sender, e ) => error = e.RpcError, null ) )
 				{

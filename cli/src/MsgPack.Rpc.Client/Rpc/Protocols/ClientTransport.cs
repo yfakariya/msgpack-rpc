@@ -38,7 +38,7 @@ namespace MsgPack.Rpc.Protocols
 	{
 		private const int _defaultSegmentSize = 32 * 1024;
 		private const int _defaultSegmentCount = 1;
-		
+
 		protected int InitialSegmentSize
 		{
 			get
@@ -70,7 +70,7 @@ namespace MsgPack.Rpc.Protocols
 		public RpcClientOptions Options
 		{
 			get { return this._options; }
-		} 
+		}
 
 		private readonly CountdownEvent _sessionTableLatch = new CountdownEvent( 1 );
 		private readonly TimeSpan _drainTimeout;
@@ -92,7 +92,7 @@ namespace MsgPack.Rpc.Protocols
 			this._requestSerializer = ClientServices.RequestSerializerFactory.Create( protocol, options );
 			this._responseSerializer = ClientServices.ResponseDeserializerFactory.Create( protocol, options );
 			this._drainTimeout = options == null ? TimeSpan.FromSeconds( 3 ) : options.DrainTimeout ?? TimeSpan.FromSeconds( 3 );
-			this._options = options ?? new RpcClientOptions() ;
+			this._options = options ?? new RpcClientOptions();
 			this._options.Freeze();
 		}
 
@@ -113,7 +113,7 @@ namespace MsgPack.Rpc.Protocols
 			this._sessionTableLatch.Signal();
 			this._sessionTableLatch.Wait( this._drainTimeout, this.EventLoop.CancellationToken );
 		}
-		
+
 		public void Send( MessageType type, int? messageId, String method, IList<object> arguments, Action<SendingContext, Exception, bool> onMessageSent, IResponseHandler responseHandler )
 		{
 			switch ( type )
@@ -198,7 +198,21 @@ namespace MsgPack.Rpc.Protocols
 			return this.GetBufferForReceiveCore( context );
 		}
 
-		protected abstract ChunkBuffer GetBufferForReceiveCore( SendingContext context );
+		protected virtual ChunkBuffer GetBufferForReceiveCore( SendingContext context )
+		{
+			// Reuse sending buffer.
+			return context.SendingBuffer.Chunks;
+		}
+
+		ChunkBuffer ITransportReceiveHandler.ReallocateReceivingBuffer( ChunkBuffer oldBuffer, long requestedLength, ReceivingContext context )
+		{
+			return this.ReallocateReceivingBufferCore( oldBuffer, requestedLength, context );
+		}
+
+		protected virtual ChunkBuffer ReallocateReceivingBufferCore( ChunkBuffer oldBuffer, long requestedLength, ReceivingContext context )
+		{
+			return ChunkBuffer.CreateDefault( context.SessionContext.Options.BufferSegmentCount ?? 1, context.SessionContext.Options.BufferSegmentSize ?? ChunkBuffer.DefaultSegmentSize );
+		}
 
 		protected virtual void OnReceiveCore( ReceivingContext context, ResponseMessage response, RpcErrorMessage error )
 		{

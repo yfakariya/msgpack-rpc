@@ -115,7 +115,7 @@ namespace MsgPack.Rpc.Serialization
 
 			Contract.EndContractBlock();
 
-			var context = new RequestMessageSerializationContext( buffer, method, arguments );
+			var context = new RequestMessageSerializationContext( buffer, messageId, method, arguments );
 
 			foreach ( var preSerializationFilter in this._preSerializationFilters )
 			{
@@ -177,7 +177,7 @@ namespace MsgPack.Rpc.Serialization
 		/// <exception cref="InvalidOperationException">
 		///		Some filters violate contract.
 		/// </exception>
-		public RpcErrorMessage Deserialize( RpcInputBuffer input, out RequestMessage result )
+		public RpcErrorMessage Deserialize( IEnumerable<byte> input, out RequestMessage result )
 		{
 			if ( input == null )
 			{
@@ -275,13 +275,17 @@ namespace MsgPack.Rpc.Serialization
 				{
 					case MessageType.Request:
 					{
-						if ( !requestFields[ nextPosition ].IsTypeOf<int>().GetValueOrDefault() )
+						if ( !requestFields[ nextPosition ].IsTypeOf<uint>().GetValueOrDefault() )
 						{
-							context.SetSerializationError( new RpcErrorMessage( RpcError.MessageRefusedError, "Invalid message.", "Message ID of request message is not int32." ) );
+							context.SetSerializationError( new RpcErrorMessage( RpcError.MessageRefusedError, "Invalid message.", "Message ID of request message is not uint32." ) );
 							return;
 						}
 
-						context.MessageId = requestFields[ nextPosition ].AsInt32();
+						// For CLS compliance store uint32 value as int32.
+						unchecked
+						{
+							context.MessageId = ( int )requestFields[ nextPosition ].AsUInt32();
+						}
 
 						nextPosition++;
 						break;

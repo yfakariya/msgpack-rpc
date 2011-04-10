@@ -147,7 +147,7 @@ namespace MsgPack.Rpc.Protocols
 					ClientServices.SocketFactory
 				) { RemoteEndPoint = remoteEndPoint };
 		}
-		
+
 		/// <summary>
 		///		Bridge callback of <see cref="RpcSocketAsyncEventArgs"/> to method of this class.
 		/// </summary>
@@ -171,7 +171,7 @@ namespace MsgPack.Rpc.Protocols
 		/// <typeparam name="T">Expected concrete type of <see cref="RpcSocketAsyncEventArgs"/>.</typeparam>
 		/// <param name="e">Argument of callback.</param>
 		/// <param name="handler">Handler of this class.</param>
-		private static void BridgeTo<T>( RpcSocketAsyncEventArgs e, SocketError socketError, bool completedSynchronously, Action<T, SocketError,bool> handler )
+		private static void BridgeTo<T>( RpcSocketAsyncEventArgs e, SocketError socketError, bool completedSynchronously, Action<T, SocketError, bool> handler )
 		{
 			Contract.Assume( e != null, "e != null, handler:" + handler.Method );
 			Contract.Assume( e.UserToken != null, "e.UserToken(<" + typeof( T ).FullName + "> is null. handler:" + handler.Method );
@@ -325,15 +325,16 @@ namespace MsgPack.Rpc.Protocols
 			}
 
 			context.OnMessageSent( null, completedSynchronously );
-			
-			if( context.MessageId != null )
+
+			if ( context.MessageId != null )
 			{
 				this.Receive(
 					new ReceivingContext(
 						context.SessionContext,
-						new RpcInputBuffer(
+						new RpcInputBuffer<RpcSocketAsyncEventArgs, ReceivingContext>(
 							context.SessionContext.TransportReceiveHandler.GetBufferForReceive( context ),
-							( _, state ) => this.FeedMore( state as RpcSocketAsyncEventArgs ),
+							context.SessionContext.TransportReceiveHandler.ReallocateReceivingBuffer,
+							( _, requiredLength, state ) => this.FeedMore( requiredLength, state as RpcSocketAsyncEventArgs ),
 							context.SocketContext
 						),
 						new Unpacker()
@@ -376,7 +377,17 @@ namespace MsgPack.Rpc.Protocols
 
 		protected virtual void OnReceived( ReceivingContext context, bool completedSynchronously )
 		{
-			// nop.
+			if ( context.SocketContext.SocketError != SocketError.Success )
+			{
+				this.HandleError( context.SocketContext.LastOperation, context.SocketContext.SocketError );
+				return;
+			}
+
+			if ( !context.CancellationToken.IsCancellationRequested )
+			{
+				// FIXME: Feeding.
+				context.SessionContext.TransportReceiveHandler.OnReceive( context );
+			}
 		}
 
 		public void ReceiveFrom( ReceivingContext context )
@@ -396,6 +407,6 @@ namespace MsgPack.Rpc.Protocols
 		#endregion  -- Receive --
 
 
-		protected abstract BufferFeeding FeedMore( RpcSocketAsyncEventArgs context );
+		protected abstract BufferFeeding FeedMore( int? requestedLength, RpcSocketAsyncEventArgs context );
 	}
 }
